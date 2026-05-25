@@ -1,0 +1,6 @@
+{
+  "name": "OMK Services",
+  "description": "Business OS and Autonomous Agency-as-a-Service interface built with the Digital Garden design system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
