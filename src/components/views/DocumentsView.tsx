@@ -2,9 +2,12 @@ import React from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { DOCUMENTS } from '@/lib/constants';
+import { Document } from '@/lib/types';
+import { useCollection } from '@/hooks/useCollection';
 import { FileText, FileCheck, Clock, BookOpen, Search, Users, Briefcase, Eye, Download } from 'lucide-react';
 
 export const DocumentsView: React.FC = () => {
+  const { data: documents } = useCollection<Document>('documents', DOCUMENTS);
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
@@ -19,9 +22,9 @@ export const DocumentsView: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Documents', value: DOCUMENTS.length, icon: FileText },
-          { label: 'Auto-Filled', value: DOCUMENTS.filter(d => d.status === 'Auto-filled').length, icon: FileCheck },
-          { label: 'Pending Signature', value: DOCUMENTS.filter(d => d.status === 'Pending Signature').length, icon: Clock },
+          { label: 'Total Documents', value: documents.length, icon: FileText },
+          { label: 'Auto-Filled', value: documents.filter(d => d.status === 'Auto-filled').length, icon: FileCheck },
+          { label: 'Pending Signature', value: documents.filter(d => d.status === 'Pending Signature').length, icon: Clock },
           { label: 'Templates', value: '12', icon: BookOpen },
         ].map((stat, i) => (
           <Card key={i} className="p-4 flex items-center justify-between">
@@ -48,7 +51,7 @@ export const DocumentsView: React.FC = () => {
           </div>
         </div>
         <div className="divide-y divide-stone-100">
-          {DOCUMENTS.map(doc => (
+          {documents.map(doc => (
             <div key={doc.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-stone-50 transition-colors">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">

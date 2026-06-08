@@ -3,9 +3,14 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { ProgressBar } from '@/components/ProgressBar';
 import { CLIENTS, AGENTS } from '@/lib/constants';
+import { Client, Agent } from '@/lib/types';
+import { useCollection } from '@/hooks/useCollection';
 import { RefreshCw, Clock, CheckCircle, Activity, BarChart3, ArrowUpRight, Briefcase, Cpu } from 'lucide-react';
 
-export const DashboardView: React.FC = () => (
+export const DashboardView: React.FC = () => {
+  const { data: clients } = useCollection<Client>('clients', CLIENTS);
+  const { data: agents } = useCollection<Agent>('agents', AGENTS);
+  return (
   <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex items-center justify-between">
       <div>
@@ -77,7 +82,7 @@ export const DashboardView: React.FC = () => (
             <Badge variant="info">5 Active</Badge>
           </div>
           <div className="space-y-4">
-            {CLIENTS.slice(0, 3).map(client => (
+            {clients.slice(0, 3).map(client => (
               <div key={client.id} className="p-4 rounded-xl border border-stone-100 bg-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-semibold border border-emerald-200">
@@ -117,7 +122,7 @@ export const DashboardView: React.FC = () => (
             </span>
           </div>
           <div className="space-y-4">
-            {AGENTS.slice(0, 4).map(agent => (
+            {agents.slice(0, 4).map(agent => (
               <div key={agent.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
                 <div className="flex items-center gap-3">
                   <Cpu className="w-4 h-4 text-emerald-400" />
@@ -134,4 +139,5 @@ export const DashboardView: React.FC = () => (
       </div>
     </div>
   </div>
-);
+  );
+};

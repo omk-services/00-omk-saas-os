@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/Card';
 import { AGENTS } from '@/lib/constants';
+import { Agent } from '@/lib/types';
+import { useCollection } from '@/hooks/useCollection';
 import { Cpu, CheckCircle, StopCircle, PlayCircle, Activity } from 'lucide-react';
 
 export const AgentsView: React.FC = () => {
+  const { data: agents } = useCollection<Agent>('agents', AGENTS);
   const [showLogs, setShowLogs] = useState(false);
 
   return (
@@ -23,7 +26,7 @@ export const AgentsView: React.FC = () => {
 
       {!showLogs ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {AGENTS.map((agent) => (
+          {agents.map((agent) => (
             <Card key={agent.id} className="flex flex-col p-6 hover:shadow-md transition-shadow relative overflow-hidden">
               {/* Status Indicator Bar */}
               <div className={`absolute top-0 left-0 w-full h-1 ${agent.status === 'active' ? 'bg-emerald-500' : 'bg-amber-400'}`} />

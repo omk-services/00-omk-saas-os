@@ -1,43 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { ProgressBar } from '@/components/ProgressBar';
 import { CLIENTS } from '@/lib/constants';
 import { Client } from '@/lib/types';
+import { useCollection } from '@/hooks/useCollection';
 import { Search, Plus, Users, Clock, CheckCircle, AlertCircle, FileText } from 'lucide-react';
 
 export const ClientsView: React.FC = () => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const { data: clients, create } = useCollection<Client>('clients', CLIENTS);
   const [search, setSearch] = useState('');
-
-  // Load from localStorage
-  useEffect(() => {
-    const local = localStorage.getItem('omk_clients');
-    if (local) {
-      try {
-        setClients(JSON.parse(local));
-      } catch (e) {
-        setClients(CLIENTS);
-      }
-    } else {
-      setClients(CLIENTS);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // Save to localStorage
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('omk_clients', JSON.stringify(clients));
-    }
-  }, [clients, isLoaded]);
 
   const handleAddClient = () => {
     const name = prompt("Enter client's full name:");
     const email = prompt("Enter client's email:");
     const service = prompt("Enter service (e.g., LLC Formation, Tax Consulting):");
-    
+
     if (name && email && service) {
       const newClient: Client = {
         id: 'C' + (clients.length + 1),
@@ -48,7 +26,7 @@ export const ClientsView: React.FC = () => {
         progress: 10,
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
       };
-      setClients(prev => [...prev, newClient]);
+      void create(newClient);
     }
   };
 

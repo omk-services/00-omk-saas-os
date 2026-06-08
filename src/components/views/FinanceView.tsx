@@ -2,9 +2,13 @@ import React from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { INVOICES } from '@/lib/constants';
+import { Invoice } from '@/lib/types';
+import { useCollection } from '@/hooks/useCollection';
 import { BarChart3, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
-export const FinanceView: React.FC = () => (
+export const FinanceView: React.FC = () => {
+  const { data: invoices } = useCollection<Invoice>('invoices', INVOICES);
+  return (
   <div className="space-y-6 animate-in fade-in duration-300">
     <div>
       <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Payments & Finance</h1>
@@ -52,7 +56,7 @@ export const FinanceView: React.FC = () => (
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
-          {INVOICES.map(inv => (
+          {invoices.map(inv => (
             <tr key={inv.id} className="hover:bg-stone-50 transition-colors">
               <td className="p-4 font-medium text-slate-900 text-sm">{inv.id}</td>
               <td className="p-4 text-sm text-slate-700">{inv.client}</td>
@@ -68,4 +72,5 @@ export const FinanceView: React.FC = () => (
       </table>
     </Card>
   </div>
-);
+  );
+};

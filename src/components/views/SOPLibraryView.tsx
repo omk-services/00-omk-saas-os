@@ -2,9 +2,13 @@ import React from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { SOPS } from '@/lib/constants';
+import { Sop } from '@/lib/types';
+import { useCollection } from '@/hooks/useCollection';
 import { BookOpen, PlayCircle, CheckCircle, FileCheck, Plus, Clock, Users } from 'lucide-react';
 
-export const SOPLibraryView: React.FC = () => (
+export const SOPLibraryView: React.FC = () => {
+  const { data: sops } = useCollection<Sop>('sops', SOPS);
+  return (
   <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex items-center justify-between">
       <div>
@@ -18,7 +22,7 @@ export const SOPLibraryView: React.FC = () => (
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Master SOPs', value: SOPS.length, icon: BookOpen },
+          { label: 'Master SOPs', value: sops.length, icon: BookOpen },
           { label: 'Total Executions', value: '1,217', icon: PlayCircle },
           { label: 'Avg Rating', value: '4.8', icon: CheckCircle },
           { label: 'Templates', value: '24', icon: FileCheck },
@@ -36,7 +40,7 @@ export const SOPLibraryView: React.FC = () => (
       </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {SOPS.map(sop => (
+      {sops.map(sop => (
         <Card key={sop.id} className="p-5 hover:border-emerald-200 hover:shadow-md transition-all group flex flex-col h-full">
           <div className="flex justify-between items-start mb-4">
             <Badge variant="default">{sop.category}</Badge>
@@ -73,4 +77,5 @@ export const SOPLibraryView: React.FC = () => (
       ))}
     </div>
   </div>
-);
+  );
+};
