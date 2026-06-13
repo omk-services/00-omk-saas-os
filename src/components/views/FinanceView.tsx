@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { INVOICES } from '@/lib/constants';
+import { invoicesRepo } from '@/data/invoices.repo';
 import { Invoice } from '@/lib/types';
-import { useCollection } from '@/hooks/useCollection';
 import { BarChart3, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export const FinanceView: React.FC = () => {
-  const { data: invoices } = useCollection<Invoice>('invoices', INVOICES);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    invoicesRepo.list()
+      .then(setInvoices)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 bg-stone-200 rounded w-1/3"></div>
+        <div className="h-32 bg-stone-100 rounded"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700">Error: {error}</div>;
+  }
+
   return (
   <div className="space-y-6 animate-in fade-in duration-300">
     <div>

@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { SOPS } from '@/lib/constants';
+import { sopsRepo } from '@/data/sops.repo';
 import { Sop } from '@/lib/types';
-import { useCollection } from '@/hooks/useCollection';
 import { BookOpen, PlayCircle, CheckCircle, FileCheck, Plus, Clock, Users } from 'lucide-react';
 
 export const SOPLibraryView: React.FC = () => {
-  const { data: sops } = useCollection<Sop>('sops', SOPS);
+  const [sops, setSops] = useState<Sop[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    sopsRepo.list()
+      .then(setSops)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 bg-stone-200 rounded w-1/3"></div>
+        <div className="h-32 bg-stone-100 rounded"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700">Error: {error}</div>;
+  }
+
   return (
   <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex items-center justify-between">

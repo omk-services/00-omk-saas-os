@@ -1,15 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { CLIENTS, AGENTS } from '@/lib/constants';
+import { clientsRepo } from '@/data/clients.repo';
+import { agentsRepo } from '@/data/agents.repo';
 import { Client, Agent } from '@/lib/types';
-import { useCollection } from '@/hooks/useCollection';
 import { RefreshCw, Clock, CheckCircle, Activity, BarChart3, ArrowUpRight, Briefcase, Cpu } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
-  const { data: clients } = useCollection<Client>('clients', CLIENTS);
-  const { data: agents } = useCollection<Agent>('agents', AGENTS);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([clientsRepo.list(), agentsRepo.list()])
+      .then(([c, a]) => { setClients(c); setAgents(a); })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 bg-stone-200 rounded w-1/3"></div>
+        <div className="h-32 bg-stone-100 rounded"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700">Error: {error}</div>;
+  }
+
   return (
   <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex items-center justify-between">

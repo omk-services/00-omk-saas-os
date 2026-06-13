@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { DOCUMENTS } from '@/lib/constants';
+import { documentsRepo } from '@/data/documents.repo';
 import { Document } from '@/lib/types';
-import { useCollection } from '@/hooks/useCollection';
 import { FileText, FileCheck, Clock, BookOpen, Search, Users, Briefcase, Eye, Download } from 'lucide-react';
 
 export const DocumentsView: React.FC = () => {
-  const { data: documents } = useCollection<Document>('documents', DOCUMENTS);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    documentsRepo.list()
+      .then(setDocuments)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 bg-stone-200 rounded w-1/3"></div>
+        <div className="h-32 bg-stone-100 rounded"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700">Error: {error}</div>;
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">

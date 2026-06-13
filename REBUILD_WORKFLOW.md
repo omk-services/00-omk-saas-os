@@ -19,6 +19,21 @@
 | Serveur prod | ❌ `express` en deps mais aucun `server.js` / `Dockerfile` |
 | Repo | `github.com/Amdkn/01-OMK-Business-OS` (1 commit, clean) |
 
+### 0.1 État phases A→H (vérifié 2026-06-10)
+
+| Phase | Description | État (2026-06-10) | Note |
+|-------|-------------|-------------------|------|
+| A | Foundations locales | ✅ DONE | 2026-06-10: `npm run lint` exit=0, `tsc --noEmit` exit=0 (verified by A2) |
+| B | Schémas + seed Supabase | ❌ BLOCKED | gated par ADR-OMK-003 (MCP `supabase-aspace` v0.1, en rédaction) — 3/4 ADR ratifiés (cf. §5) |
+| C | Auth + tenant | ❌ NOT STARTED | "Admin User" toujours hardcodé dans App.tsx |
+| D | Repositories + branchement vues | 🟡 PARTIAL | 2026-06-10: 7 missing views ported (Sidebar extracted, 7 new views + 7 skeletons + 7 empty states). Lint+tsc GREEN. Repos still wired to `lib/constants.ts` (Phase D step 2 incomplete). |
+| E | Routing react-router-dom 7 | ❌ NOT STARTED | `useState(activeTab)` toujours en place dans App.tsx |
+| F | Serveur + conteneur | 🟡 PARTIAL | `server.js` (Express) + `Dockerfile` (node:20-alpine) présents |
+| G | Déploiement Dokploy (2 services) | 🟡 UNBLOCKED (gates lifted) | ADR-OMK-001 RATIFIED 2026-06-11 — peut démarrer dès MCP `supabase-aspace` prêt |
+| H | Tests isolation + handoff | ❌ NOT STARTED | gated par B/C/D/G |
+
+> Les transitions de cette journée incluent : (a) ratifications ADR du 2026-06-11 (ADR-SUPABASE-001 ACCEPTED, ADR-OMK-001 RATIFIED, ADR-OMK-002 RATIFIED) — reflétées dans §0.1 (Phases B et G gates), §5 (table 4 ADR blockers), et propagées aux autres docs dashboard ; (b) Phase A: 🟡 PARTIAL → ✅ DONE et Phase D: ❌ NOT STARTED → 🟡 PARTIAL. ADR-OMK-003 (MCP supabase-aspace) reste en rédaction, à relancer post-quota 429.
+
 ---
 
 ## 1. Architecture cible
@@ -162,9 +177,9 @@ CREATE POLICY tenant_isolation ON omk_saas.clients
 ## 5. Dépendances bloquantes
 | Bloqueur | Statut |
 |---|---|
-| ADR-SUPABASE-001 ratifié | ⏳ PROPOSED |
-| Rôles PG `aspace_admin`/`aspace_observer` | ⏳ à créer (VPS) |
-| MCP `supabase-aspace` v0.1 | ⏳ à implémenter |
-| ADR-OMK-001 ratifié | ⏳ PROPOSED |
+| ADR-SUPABASE-001 ratifié | ✅ ACCEPTED 2026-06-08 |
+| Rôles PG `aspace_admin`/`aspace_observer` | ✅ RATIFIED + PROVISIONED 2026-06-13 (ADR-OMK-002, script 06_provision_pg_roles_omk.sql applied + patched, D1-verified NOLOGIN NOSUPERUSER NOINHERIT + 8/9 schema REVOKEs via `has_schema_privilege()`, pgsodium absent expected) |
+| MCP `supabase-aspace` v0.1 | 🟡 ADR-OMK-003 en rédaction (429 rate-limited, à relancer post-quota) |
+| ADR-OMK-001 ratifié | ✅ RATIFIED 2026-06-11 (D1-D10 figés, Caddyfile snippets, no Vercel) |
 
 > Le rebuild suit le pattern du skill `picard-audit-and-prod-workflow` (audit→migrate→verify→GitHub→Dokploy), **étendu** avec la couche Supabase multi-tenant. Réutiliser ce skill, ne pas en créer un nouveau.

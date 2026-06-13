@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { CLIENTS } from '@/lib/constants';
+import { clientsRepo } from '@/data/clients.repo';
 import { Client } from '@/lib/types';
-import { useCollection } from '@/hooks/useCollection';
 import { Search, Plus, Users, Clock, CheckCircle, AlertCircle, FileText } from 'lucide-react';
 
 export const ClientsView: React.FC = () => {
-  const { data: clients, create } = useCollection<Client>('clients', CLIENTS);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    clientsRepo.list()
+      .then(setClients)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleAddClient = () => {
     const name = prompt("Enter client's full name:");
@@ -26,12 +34,24 @@ export const ClientsView: React.FC = () => {
         progress: 10,
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
       };
-      void create(newClient);
+      void clientsRepo.create(newClient).then((c) => setClients((prev) => [...prev, c]));
     }
   };
 
-  const filtered = clients.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 bg-stone-200 rounded w-1/3"></div>
+        <div className="h-32 bg-stone-100 rounded"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700">Error: {error}</div>;
+  }
+
+  const filtered = clients.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
   );
 
