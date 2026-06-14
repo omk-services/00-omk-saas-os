@@ -181,5 +181,7 @@ CREATE POLICY tenant_isolation ON omk_saas.clients
 | Rôles PG `aspace_admin`/`aspace_observer` | ✅ RATIFIED + PROVISIONED 2026-06-13 (ADR-OMK-002, script 06_provision_pg_roles_omk.sql applied + patched, D1-verified NOLOGIN NOSUPERUSER NOINHERIT + 8/9 schema REVOKEs via `has_schema_privilege()`, pgsodium absent expected) |
 | MCP `supabase-aspace` v0.1 | 🟡 ADR-OMK-003 en rédaction (429 rate-limited, à relancer post-quota) |
 | ADR-OMK-001 ratifié | ✅ RATIFIED 2026-06-11 (D1-D10 figés, Caddyfile snippets, no Vercel) |
+| Hook `custom_access_token_hook` | ✅ WIRED + ACTIVATED 2026-06-14 (omk_saas.memberships first, solaris_saas fallback, SECURITY DEFINER, `GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED=true` in docker-compose.yml, JWT contains `org_id` + `app_metadata.role=owner`) |
+| Deploy `omk.kalybana.com` | ✅ LIVE 2026-06-14 (HTTP 200 in 95ms, Caddy reverse proxy, LE cert auto-issued, Vite build dist/ served, PostgREST via `Accept-Profile: omk_saas` header) |
 
 > Le rebuild suit le pattern du skill `picard-audit-and-prod-workflow` (audit→migrate→verify→GitHub→Dokploy), **étendu** avec la couche Supabase multi-tenant. Réutiliser ce skill, ne pas en créer un nouveau.

@@ -11,6 +11,7 @@
 |---|---------|--------|
 | 1 | `ADR-SUPABASE-001` (multi-tenant Supabase) | ✅ ACCEPTED 2026-06-08 |
 | 2 | PG roles `aspace_admin` / `aspace_observer` on VPS | ✅ RATIFIED + PROVISIONED 2026-06-13 — ADR-OMK-002 + script 06_provision_pg_roles_omk.sql applied (NOLOGIN NOSUPERUSER NOINHERIT, 8/9 schema REVOKEs verified, pgsodium absent expected, script cosmetic bug l.247/251 fixed) |
+| 2b | `custom_access_token_hook` wired + activated | ✅ 2026-06-14 — hook v2 final (`omk_saas.memberships` first, `solaris_saas` fallback), `SECURITY DEFINER`, `GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED=true` in `docker-compose.yml`, `Accept-Profile: omk_saas` header required for PostgREST |
 | 3 | MCP `supabase-aspace` v0.1 | 🟡 ADR-OMK-003 en rédaction (sub-agent précédent 429 rate-limited, à relancer post-quota) |
 | 4 | `ADR-OMK-001` (dual-product deployment) | ✅ RATIFIED 2026-06-11 (D1-D10 figés, Caddyfile snippets, no Vercel) |
 
@@ -20,14 +21,14 @@ Without these ratified, **Phase B (Supabase schemas + RLS), Phase C (Auth/tenant
 
 | Phase | Description | State |
 |-------|-------------|-------|
-| A | Foundations | ✅ DONE — `npm run lint` exit=0, tsc exit=0 |
-| B | Schemas + seed Supabase | ❌ BLOCKED — DDL drafts in `apps/dashboard/sql/` awaiting ADR |
-| C | Auth + tenant | ❌ NOT STARTED |
-| D | Repositories + branchement vues | 🟡 PARTIAL — 14 vues + skeletons + empty states; repos still wrap `lib/constants.ts` mocks |
-| E | Routing react-router-dom 7 | ❌ NOT STARTED — `useState(activeTab)` in App.tsx |
-| F | Serveur + conteneur | 🟡 PARTIAL — `server.js` (Express) + `Dockerfile` (node:20-alpine) |
-| G | Déploiement Dokploy (2 services) | ❌ BLOCKED — needs ADR-OMK-001 |
-| H | Tests isolation + handoff | ❌ NOT STARTED |
+| A | Foundations | ✅ DONE 2026-06-10 — `npm run lint` exit=0, tsc exit=0 |
+| B | Schemas + seed Supabase | ✅ DONE 2026-06-13 — 5 omk_internal + 7 omk_saas tables, 7 RLS policies `*_isolation` (cmd=ALL, role=public), PG roles `aspace_admin` + `aspace_observer` provisioned |
+| C | Auth + tenant | ✅ DONE 2026-06-13 — AuthProvider/useAuth/LoginView/SignupView created, App.tsx auth gating, Sidebar uses useAuth |
+| D | Repositories + branchement vues | ✅ DONE 2026-06-13 — 5 repos (clients/documents/agents/invoices/sops) + 6 views branched to repos (Dashboard, Clients, Documents, Agents, Finance, SOPLibrary) with useEffect+loading/error gates |
+| E | Routing react-router-dom 7 | 🟡 DEFERRED — `useState(activeTab)` still in App.tsx (Phase E not prioritized for saas deploy) |
+| F | Serveur + conteneur | ✅ DONE 2026-06-13 — `server.js` (Express) + `Dockerfile` (node:20-alpine) + Vite build dist/ + Caddy reverse proxy |
+| G | Déploiement Dokploy (saas) | ✅ DONE 2026-06-14 — `omk-dashboard-saas-aqylzp` service on port 3010, DNS `omk.kalybana.com` → 148.230.92.235, Caddy vhost wired, TLS cert auto-issued. Hook `custom_access_token_hook` SECURITY DEFINER + GoTrue env vars. First user `omk-admin@kalybana.com` provisioned |
+| H | Tests isolation + handoff | 🟡 DEFERRED — end-to-end JWT test passed (org_id in claims, RLS-scoped queries return 1 org + 0 clients), Playwright E2E + adversarial RLS test still pending |
 
 ## 3. Dual-Mode Runtime Contract
 
