@@ -28,7 +28,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  if (isLoading) {
+  // ⚠️ DEMO_MODE: temporary bypass to view dashboard without login.
+  //    TODO: remove this flag before production deploy.
+  const DEMO_MODE = true;
+
+  if (!DEMO_MODE && isLoading) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center text-slate-500">
         Loading…
@@ -36,7 +40,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!DEMO_MODE && !user) {
     if (authMode === 'signup') {
       return <SignupView onSwitchToLogin={() => setAuthMode('login')} />;
     }
