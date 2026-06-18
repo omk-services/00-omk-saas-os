@@ -92,7 +92,11 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-stone-50">
+      <main
+        className={`flex-1 flex flex-col h-screen overflow-hidden bg-stone-50 transition-[padding] duration-300 ${
+          sidebarCollapsed ? 'md:pl-28' : 'md:pl-72'
+        }`}
+      >
         {/* Top Header */}
         <header className="h-16 border-b border-stone-200 bg-white/80 backdrop-blur-md flex items-center justify-between px-8 shrink-0 z-10 hidden md:flex sticky top-0">
           <div className="flex items-center text-sm font-medium text-slate-500">

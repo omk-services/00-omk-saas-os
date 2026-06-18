@@ -81,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, isCollapsed, 
     <aside
       className={`${
         isCollapsed ? 'w-20' : 'w-64'
-      } h-[calc(100vh-2rem)] fixed left-4 top-4 z-50 rounded-2xl flex flex-col glass-panel shadow-soft transition-all duration-300 ease-in-out`}
+      } h-[calc(100vh-2rem)] fixed left-0 top-0 md:left-4 md:top-4 z-50 rounded-none md:rounded-2xl flex flex-col glass-panel shadow-soft transition-all duration-300 ease-in-out md:translate-x-0`}
     >
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
