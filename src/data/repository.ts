@@ -9,7 +9,9 @@ import { supabase, SUPABASE_READY } from '@/lib/supabase';
 
 export interface Repository<T extends { id: string }> {
   list(): Promise<T[]>;
+  findById(id: string): Promise<T | null>;
   create(item: T): Promise<T>;
+  update(id: string, patch: Partial<T>): Promise<T>;
 }
 
 export function makeRepository<T extends { id: string }>(table: string, seed: T[]): Repository<T> {
@@ -22,8 +24,27 @@ export function makeRepository<T extends { id: string }>(table: string, seed: T[
         if (error) throw new Error(`[${table}] ${error.message}`);
         return (data ?? []) as T[];
       },
+      async findById(id: string): Promise<T | null> {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (error) throw new Error(`[${table}] ${error.message}`);
+        return (data as T | null) ?? null;
+      },
       async create(item: T): Promise<T> {
         const { data, error } = await supabase.from(table).insert(item).select().single();
+        if (error) throw new Error(`[${table}] ${error.message}`);
+        return data as T;
+      },
+      async update(id: string, patch: Partial<T>): Promise<T> {
+        const { data, error } = await supabase
+          .from(table)
+          .update(patch as unknown as Record<string, unknown>)
+          .eq('id', id)
+          .select()
+          .single();
         if (error) throw new Error(`[${table}] ${error.message}`);
         return data as T;
       },
@@ -44,14 +65,32 @@ export function makeRepository<T extends { id: string }>(table: string, seed: T[
     return seed;
   };
 
+  const write = (next: T[]): void => {
+    localStorage.setItem(lsKey, JSON.stringify(next));
+  };
+
   return {
     async list(): Promise<T[]> {
       return read();
     },
+    async findById(id: string): Promise<T | null> {
+      const found = read().find((item) => item.id === id);
+      return found ?? null;
+    },
     async create(item: T): Promise<T> {
       const next = [...read(), item];
-      localStorage.setItem(lsKey, JSON.stringify(next));
+      write(next);
       return item;
+    },
+    async update(id: string, patch: Partial<T>): Promise<T> {
+      const current = read();
+      const index = current.findIndex((item) => item.id === id);
+      if (index === -1) throw new Error(`[${table}] not found: ${id}`);
+      const updated: T = { ...current[index], ...patch };
+      const next = [...current];
+      next[index] = updated;
+      write(next);
+      return updated;
     },
   };
 }

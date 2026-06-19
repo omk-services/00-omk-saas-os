@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -151,9 +152,13 @@ export const ClientsView: React.FC = () => {
                     <ProgressBar progress={client.progress} />
                   </td>
                   <td className="p-4 text-right">
-                    <button className="text-sm font-medium text-emerald-600 hover:text-emerald-700 px-3 py-1.5 rounded bg-emerald-50 hover:bg-emerald-100 transition-colors tooltip-trigger" title="View bottlenecks">
+                    <Link
+                      to={`/clients/${client.id}`}
+                      className="inline-flex items-center text-sm font-medium text-emerald-600 hover:text-emerald-700 px-3 py-1.5 rounded bg-emerald-50 hover:bg-emerald-100 transition-colors tooltip-trigger"
+                      title="View client details"
+                    >
                       Details
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ))}

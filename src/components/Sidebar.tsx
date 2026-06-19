@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -17,65 +18,62 @@ import {
   PanelLeftClose,
   Shield
 } from 'lucide-react';
-import { TabType } from '@/lib/types';
 import { useAuth } from '@/auth/useAuth';
 
 interface SidebarProps {
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
   isCollapsed: boolean;
   onToggle: () => void;
 }
 
-interface NavLink {
-  id: TabType;
+interface NavLinkSpec {
+  to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 interface NavGroup {
   title: string;
-  links: ReadonlyArray<NavLink>;
+  links: ReadonlyArray<NavLinkSpec>;
 }
 
 const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     title: 'CULTIVATE',
     links: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'finance', label: 'Finance', icon: CreditCard },
-      { id: 'people', label: 'People', icon: UserCog }
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/finance', label: 'Finance', icon: CreditCard },
+      { to: '/people', label: 'People', icon: UserCog }
     ]
   },
   {
     title: 'NURTURE',
     links: [
-      { id: 'clients', label: 'Clients', icon: Users },
-      { id: 'documents', label: 'Knowledge', icon: FileText },
-      { id: 'sop', label: 'SOP Library', icon: BookOpen },
-      { id: 'tasks', label: 'Tasks', icon: CheckSquare }
+      { to: '/clients', label: 'Clients', icon: Users },
+      { to: '/documents', label: 'Knowledge', icon: FileText },
+      { to: '/sop', label: 'SOP Library', icon: BookOpen },
+      { to: '/tasks', label: 'Tasks', icon: CheckSquare }
     ]
   },
   {
     title: 'BLOOM',
     links: [
-      { id: 'agents', label: 'AI Agents Network', icon: Cpu },
-      { id: 'growth', label: 'Growth', icon: Rocket },
-      { id: 'sales', label: 'Sales Sanctum', icon: ShieldCheck },
-      { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag }
+      { to: '/agents', label: 'AI Agents Network', icon: Cpu },
+      { to: '/growth', label: 'Growth', icon: Rocket },
+      { to: '/sales', label: 'Sales Sanctum', icon: ShieldCheck },
+      { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag }
     ]
   },
   {
     title: 'ROOTS',
     links: [
-      { id: 'legal', label: 'Legal', icon: Scale },
-      { id: 'it-data', label: 'IT & Data', icon: Server },
-      { id: 'settings', label: 'Settings', icon: Settings }
+      { to: '/legal', label: 'Legal', icon: Scale },
+      { to: '/it-data', label: 'IT & Data', icon: Server },
+      { to: '/settings', label: 'Settings', icon: Settings }
     ]
   }
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, isCollapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { user } = useAuth();
   return (
     <aside
@@ -127,21 +125,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, isCollapsed, 
             <div className="space-y-1">
               {group.links.map((link) => {
                 const Icon = link.icon;
-                const isActive = activeTab === link.id;
                 return (
-                  <button
-                    key={link.id}
-                    onClick={() => onTabChange(link.id)}
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
                     title={isCollapsed ? link.label : undefined}
-                    className={`w-full flex items-center ${isCollapsed ? '' : 'px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-emerald-100/80 text-emerald-900 shadow-sm'
-                        : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/50'
-                    } ${isCollapsed ? 'justify-center' : ''}`}
+                    className={({ isActive }) =>
+                      `w-full flex items-center ${isCollapsed ? '' : 'px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-emerald-100/80 text-emerald-900 shadow-sm'
+                          : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/50'
+                      } ${isCollapsed ? 'justify-center' : ''}`
+                    }
                   >
-                    <Icon className={`w-4 h-4 ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'text-emerald-600' : ''}`} />
-                    {!isCollapsed && <span className="truncate">{link.label}</span>}
-                  </button>
+                    {({ isActive }) => (
+                      <>
+                        <Icon
+                          className={`w-4 h-4 ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'text-emerald-600' : ''}`}
+                        />
+                        {!isCollapsed && <span className="truncate">{link.label}</span>}
+                      </>
+                    )}
+                  </NavLink>
                 );
               })}
             </div>

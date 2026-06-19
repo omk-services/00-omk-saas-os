@@ -1,5 +1,6 @@
 export * from './DashboardView';
 export * from './ClientsView';
+export * from './ClientDetailView';
 export * from './DocumentsView';
 export * from './AgentsView';
 export * from './FinanceView';
