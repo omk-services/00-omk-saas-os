@@ -1,54 +1,55 @@
 # OMK Dashboard — Agent Contract
 
 > **Stack**: Vite 6.2 + React 19 + TS 5.8 + Tailwind v4 + @supabase/supabase-js 2.107
-> **Dual-mode runtime**: `VITE_APP_MODE` baked at build → `omk_internal` / `omk_saas`
-> **Deploy**: Dokploy (NOT Vercel) — 2 services × 2 schemas
-> **Date stamped**: 2026-06-10
+> **Single-mode runtime (post-ADR-OMK-004 A1)**: `VITE_APP_MODE=saas` baked at build → `omk_saas` only (mode `internal` retiré 2026-06-19)
+> **Deploy**: Vercel (team `omk-services`, project `omk-saas-os`, dpl_Fx8b821) — single project, single schema
+> **Hosting**: Supabase Cloud (OMK Services Org) — pivot Dokploy/self-host → Vercel/Cloud per **ADR-OMK-004 RATIFIED 2026-06-19**
+> **Date stamped**: 2026-06-10 (original) · **2026-06-19 (pivot post-ADR-OMK-004)**
 
-## 1. The 4 ADR Blockers (open + ratified)
+## 1. The ADR canon (post-ADR-OMK-004 RATIFIED 2026-06-19)
 
-| # | Blocker | Status |
-|---|---------|--------|
-| 1 | `ADR-SUPABASE-001` (multi-tenant Supabase) | ✅ ACCEPTED 2026-06-08 |
-| 2 | PG roles `aspace_admin` / `aspace_observer` on VPS | ✅ RATIFIED + PROVISIONED 2026-06-13 — ADR-OMK-002 + script 06_provision_pg_roles_omk.sql applied (NOLOGIN NOSUPERUSER NOINHERIT, 8/9 schema REVOKEs verified, pgsodium absent expected, script cosmetic bug l.247/251 fixed) |
-| 2b | `custom_access_token_hook` wired + activated | ✅ 2026-06-14 — hook v2 final (`omk_saas.memberships` first, `solaris_saas` fallback), `SECURITY DEFINER`, `GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED=true` in `docker-compose.yml`, `Accept-Profile: omk_saas` header required for PostgREST |
-| 3 | MCP `supabase-aspace` v0.1 | 🟡 ADR-OMK-003 en rédaction (sub-agent précédent 429 rate-limited, à relancer post-quota) |
-| 4 | `ADR-OMK-001` (dual-product deployment) | ✅ RATIFIED 2026-06-11 (D1-D10 figés, Caddyfile snippets, no Vercel) |
+| # | ADR | Status |
+|---|-----|--------|
+| 1 | `ADR-SUPABASE-001` (multi-tenant Supabase self-host) | ✅ ACCEPTED 2026-06-08 → **superseded fonctionnellement 2026-06-19** par ADR-OMK-004 (self-host → Supabase Cloud) |
+| 2 | PG roles `aspace_admin` / `aspace_observer` (ADR-OMK-002) | ✅ RATIFIED + PROVISIONED 2026-06-13 sur self-host (NOLOGIN NOSUPERUSER NOINHERIT, 8/9 schema REVOKEs verified). **⚠️ à re-provisionner sur Cloud** post-pivot |
+| 2b | `custom_access_token_hook` (self-host) | ✅ WIRED + ACTIVATED 2026-06-14 (omk_saas.memberships first, solaris_saas fallback, SECURITY DEFINER). **⚠️ Condition B ADR-OMK-004 : à re-provisionner sur Supabase Cloud** |
+| 3 | MCP `supabase-aspace` v0.1 (ADR-OMK-003) | 🟡 en rédaction (sub-agent précédent 429 rate-limited, à relancer post-quota — **scopes à pivoter** : self-host URL → Cloud PAT) |
+| 4 | `ADR-OMK-001` (dual-product deployment) | ✅ RATIFIED 2026-06-11 → **AMENDED 2026-06-19** par ADR-OMK-004 §runtime : single-mode SaaS only (A1 LOCKED). Deploy section pivotée Dokploy → Vercel |
+| **5** | **`ADR-OMK-004` (pivot Supabase Cloud + Vercel)** | ✅ **RATIFIED 2026-06-19** (Supabase Cloud OMK Services Org + Vercel team `omk-services`, A1 LOCKED single SaaS mode, 5 conditions fixées sauf B/C/D/E post-ratification) |
 
-Without these ratified, **Phase B (Supabase schemas + RLS), Phase C (Auth/tenant), Phase D-step-2 (repos), Phase G (deploy)** are BLOCKED.
+Without all 5 ADRs ratified, **Phase B (Supabase Cloud schemas + RLS), Phase C (Auth/tenant avec hook Cloud), Phase D-step-2 (repos), Phase G (Vercel deploy Auth OFF + custom domain)** are gated.
 
 ## 2. 8-Phase REBUILD State (verified 2026-06-10)
 
 | Phase | Description | State |
 |-------|-------------|-------|
 | A | Foundations | ✅ DONE 2026-06-10 — `npm run lint` exit=0, tsc exit=0 |
-| B | Schemas + seed Supabase | ✅ DONE 2026-06-13 — 5 omk_internal + 7 omk_saas tables, 7 RLS policies `*_isolation` (cmd=ALL, role=public), PG roles `aspace_admin` + `aspace_observer` provisioned |
-| C | Auth + tenant | ✅ DONE 2026-06-13 — AuthProvider/useAuth/LoginView/SignupView created, App.tsx auth gating, Sidebar uses useAuth |
+| B | Schemas + seed Supabase | ✅ DONE 2026-06-13 — 7 omk_saas tables, 7 RLS policies `*_isolation` (cmd=ALL, role=public). ~~5 omk_internal~~ **RETIRED 2026-06-19 (A1 LOCKED)**. PG roles `aspace_admin` + `aspace_observer` provisioned self-host, **⚠️ à re-provisionner sur Cloud** |
+| C | Auth + tenant | ✅ DONE 2026-06-13 (self-host) — AuthProvider/useAuth/LoginView/SignupView created, App.tsx auth gating, Sidebar uses useAuth. **⚠️ hook `custom_access_token_hook` à re-provisionner sur Cloud (Condition B)** |
 | D | Repositories + branchement vues | ✅ DONE 2026-06-13 — 5 repos (clients/documents/agents/invoices/sops) + 6 views branched to repos (Dashboard, Clients, Documents, Agents, Finance, SOPLibrary) with useEffect+loading/error gates |
 | E | Routing react-router-dom 7 | 🟡 DEFERRED — `useState(activeTab)` still in App.tsx (Phase E not prioritized for saas deploy) |
-| F | Serveur + conteneur | ✅ DONE 2026-06-13 — `server.js` (Express) + `Dockerfile` (node:20-alpine) + Vite build dist/ + Caddy reverse proxy |
-| G | Déploiement Dokploy (saas) | ✅ DONE 2026-06-14 — `omk-dashboard-saas-aqylzp` service on port 3010, DNS `omk.kalybana.com` → 148.230.92.235, Caddy vhost wired, TLS cert auto-issued. Hook `custom_access_token_hook` SECURITY DEFINER + GoTrue env vars. First user `omk-admin@kalybana.com` provisioned |
+| F | Serveur + conteneur | ✅ DONE 2026-06-13 — `server.js` (Express) + `Dockerfile` (node:20-alpine) + Vite build dist/ + Vercel build pipeline (post-pivot) |
+| G | Déploiement Vercel (saas) | 🟡 **PIVOTING 2026-06-19** (ADR-OMK-004) — Vercel project `omk-saas-os` (team `omk-services`, dpl_Fx8b821) créé + READY. **⚠️ Condition D pending** : Vercel Authentication OFF via UI Settings → Security. Hook `custom_access_token_hook` Cloud pending (Condition B). First user `omk-admin@kalybana.com` provisioned (self-host, à migrer vers Cloud) |
 | H | Tests isolation + handoff | 🟡 DEFERRED — end-to-end JWT test passed (org_id in claims, RLS-scoped queries return 1 org + 0 clients), Playwright E2E + adversarial RLS test still pending |
 
-## 3. Dual-Mode Runtime Contract
+## 3. Single-Mode Runtime Contract (post-ADR-OMK-004, A1 LOCKED 2026-06-19)
 
-One codebase, two products, two build artifacts. Mode is BAKED at `vite build` time via `VITE_APP_MODE`, NOT a runtime toggle.
+**One codebase, one product, single SaaS mode.** Per ADR-OMK-004 §Condition A = A1, mode `internal` retiré. Mode est BAKED à `vite build` time via `VITE_APP_MODE=saas`, NOT a runtime toggle.
 
 | Mode | Schema | Auth | User | RLS |
 |------|--------|------|------|-----|
-| `internal` | `omk_internal` | Staff sign-in (no signup) | OMK Services staff | Role-based `omk_staff` |
-| `saas` | `omk_saas` | Signup + login (creates org) | External PME clients | `org_id = (auth.jwt() ->> 'org_id')::uuid` |
+| `saas` (only) | `omk_saas` | Signup + login (creates org) | External PME clients | `org_id = (auth.jwt() ->> 'org_id')::uuid` |
 
-Two Dokploy services, not one with a switch. See `REBUILD_WORKFLOW.md` §3.
+**Avant 2026-06-19** : dual-mode Dokploy (2 services × 2 subdomains). Post-pivot ADR-OMK-004 : single Vercel project, single schema, single product. Voir `REBUILD_WORKFLOW.md` §1 (header pivot 2026-06-19).
 
-## 4. Supabase Architecture
+## 4. Supabase Architecture (Cloud, OMK Services Org)
 
-- **Self-hosted** at `https://supabase.148.230.92.235.sslip.io` (VPS `aspace-vps`). NOT supabase.com.
+- **Supabase Cloud** (OMK Services Org, project_id via `SUPABASE_OMK_URL` env var). PAS self-host `148.230.92.235` (archivé post-pivot).
 - Client: `@supabase/supabase-js` 2.107 (NO `@supabase/ssr` — we're a Vite SPA, not Next.js).
 - `SUPABASE_SERVICE_ROLE_KEY` is **server-side only** — never `VITE_*`.
-- Multi-tenancy via `org_id` claim injected by **Custom Access Token Hook** reading `omk_saas.memberships`.
-- **JWT hook is silent-failure-prone**: if misconfigured, every saas RLS query returns 0 rows silently. Mitigation: add `console.warn` in client when `orgId == null && APP_MODE === 'saas'`.
-- `PGRST_DB_SCHEMAS` reload on VPS is HITL (Codex/Hermes, per ADR-SUPABASE-001 D7) — not automatable from this CLI.
+- Multi-tenancy via `org_id` claim injected by **Custom Access Token Hook** (Cloud, à re-provisionner) reading `omk_saas.memberships`.
+- **JWT hook is silent-failure-prone**: if misconfigured, every saas RLS query returns 0 rows silently. Mitigation: add `console.warn` in client when `orgId == null`.
+- Cloud auto-manages schema exposure (no `PGRST_DB_SCHEMAS` HITL reload — unlike self-host per ADR-SUPABASE-001 D7).
 
 ## 5. Data Flow (Phase D current state)
 
@@ -83,7 +84,7 @@ Icons via `lucide-react`. Sidebar is collapsible (`w-20` collapsed / `w-64` expa
 - **Test Key Pragma** — never paste or read secrets from `.md` / `.json` / `.env`; env vars User scope only.
 - **Repo-Home short** (ADR-INFRA-002) — no nested build-bearing repos.
 - **Migration scope discipline** (REBUILD_WORKFLOW §4) — one phase at a time.
-- **No Vercel** — Vercel project `prj_FJpNDykkNMhDJUEg2FvKAegeeQG3` is UNUSED/orphaned.
+- **Vercel only (post-pivot 2026-06-19)** — Vercel project `omk-saas-os` (team `omk-services`, dpl_Fx8b821, READY) est l'unique cible deploy. L'ancien Vercel project orphaned `prj_FJpNDykkNMhDJUEg2FvKAegeeQG3` est archivé. ~~**No Vercel**~~ doctrine radier post-ADR-OMK-004.
 - **Trust Zone** — everything in `C:\Users\amado\`, never `C:\` root.
 
 ## 8. Files to Read First When Picking This Up
