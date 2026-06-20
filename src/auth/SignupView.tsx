@@ -1,28 +1,32 @@
 // src/auth/SignupView.tsx
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Building2, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from './useAuth';
 import { SUPABASE_READY } from '@/lib/supabase';
 
-interface SignupViewProps {
-  onSwitchToLogin: () => void;
-}
-
-export const SignupView: React.FC<SignupViewProps> = ({ onSwitchToLogin }) => {
+export const SignupView: React.FC = () => {
   const { signUp } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [orgName, setOrgName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     setError(null);
     setLoading(true);
     const result = await signUp(email, password, orgName);
     setLoading(false);
-    if (result.error) setError(result.error);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    // On success, redirect to dashboard. In saas mode the user will need email confirmation
+    // before the hook injects org_id; the ProtectedRoute will show a "no org" banner until then.
+    navigate('/dashboard', { replace: true });
   }
 
   return (
@@ -104,9 +108,9 @@ export const SignupView: React.FC<SignupViewProps> = ({ onSwitchToLogin }) => {
 
         <div className="mt-6 text-center text-sm text-slate-600">
           Already have an account?{' '}
-          <button onClick={onSwitchToLogin} className="text-emerald-600 hover:text-emerald-700 font-semibold">
+          <Link to="/login" className="text-emerald-600 hover:text-emerald-700 font-semibold">
             Sign in
-          </button>
+          </Link>
         </div>
       </div>
     </div>
