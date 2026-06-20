@@ -36,7 +36,9 @@ async function fetchUserOrg(orgId: string): Promise<Organization | null> {
   if (!SUPABASE_READY) return null;
   const { data, error } = await supabase.from('organizations').select('*').eq('id', orgId).maybeSingle();
   if (error) {
-    console.warn('[auth] failed to fetch organization', error.message);
+    if (import.meta.env.DEV) {
+      console.warn('[auth] failed to fetch organization', error.message);
+    }
     return null;
   }
   return data as Organization | null;
@@ -73,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOrganization(org);
     } else {
       setOrganization(null);
-      if (APP_MODE === 'saas') {
+      if (APP_MODE === 'saas' && import.meta.env.DEV) {
         console.warn('[omk] saas mode but no org_id in JWT — RLS will return 0 rows');
       }
     }

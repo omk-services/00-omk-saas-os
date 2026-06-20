@@ -18,11 +18,13 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 if (!url || !anonKey) {
   // Fail fast & clear (common/coding-style: validate at boundaries).
   // In dev without env, repos should surface this instead of silently using mocks.
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing. ' +
-      'Set them in .env (see .env.example). Data layer will not work until configured.',
-  );
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing. ' +
+        'Set them in .env (see .env.example). Data layer will not work until configured.',
+    );
+  }
 }
 
 // Schema override: PostgREST free-tier on Supabase Cloud exposes only 'public' at boot.
