@@ -1,5 +1,5 @@
 // src/data/repository.ts
-// ADR-OMK-001 D4 + ADR-OMK-005 (Phase C) — repository layer (multi-tenant aware).
+// ADR-OMK-001 D4 + ADR-OMK-005 (Phase A→F) + Phase I (D6 #97 default mapper).
 //
 // Two execution paths:
 //   1. Supabase Cloud (when SUPABASE_READY): queries target `omk_saas.*` schema
@@ -8,11 +8,18 @@
 //   2. localStorage (dev fallback): seeded with mocks from constants.ts. RLS
 //      is simulated by the in-memory filter `item.org_id === activeOrgId`.
 //
-// FIELD MAPPING (UI ↔ DB)
-//   The UI types (Client, Document, etc.) are camelCase + have UI-only fields
-//   like `date: string` (formatted). The DB columns are snake_case + `created_at`.
-//   We map in two helpers: `toDbRow()` (UI → DB) and `fromDbRow()` (DB → UI).
-//   This keeps the UI clean while enforcing schema strictness in storage.
+// FIELD MAPPING (Phase I, D6 #97)
+//   Without a custom `options.mapper`, the default `autoMap<T>()` converts
+//   snake_case DB columns to camelCase UI fields for the canonical column
+//   names introduced in Phase A:
+//     - created_at   -> `date`       (YYYY-MM-DD substring, 10 chars)
+//     - updated_at   -> `updatedAt`  (full ISO string)
+//     - org_id       -> stripped (UI types don't carry tenant; repo injects)
+//     - file_url     -> `fileUrl`
+//     - mime_type    -> `mimeType`
+//     - client_id    -> `clientId`
+//   Custom mappers (SalesView, LegalView) still take precedence — they pass
+//   `options.mapper` explicitly.
 //
 // TENANT GUARD
 //   When a tenant context is available (useOrg() / getActiveOrgId()),
@@ -32,22 +39,83 @@ export interface Repository<T extends { id: string }> {
   remove(id: string): Promise<void>;
 }
 
-// Mapping helpers. Subclasses can override if a particular table needs custom
-// column names. Default: pass-through (caller is responsible for camelCase match).
+interface MakeRepositoryOptions<T> {
+  /** Override the default mapper if the UI type ≠ DB row shape. */
+  mapper?: Mapper<T>;
+}
+
 type Mapper<T> = {
   toDb: (ui: Partial<T>) => Record<string, unknown>;
   fromDb: (row: Record<string, unknown>) => T;
 };
 
+// Identity mapper (pass-through). Used by default + as fallback when no custom mapper.
 const identityMapper = <T>(): Mapper<T> => ({
   toDb: (ui) => ui as Record<string, unknown>,
   fromDb: (row) => row as unknown as T,
 });
 
-interface MakeRepositoryOptions<T> {
-  /** Override the default identity mapper if the UI type ≠ DB row shape. */
-  mapper?: Mapper<T>;
+// ────────────────────────────────────────────────────────────────────────────
+// Default snake_case → camelCase mapper (D6 #97)
+// ────────────────────────────────────────────────────────────────────────────
+// DB columns are snake_case per Phase A canon. UI types are camelCase.
+// We map the canonical column names introduced by Phase A:
+//   created_at, updated_at, file_url, mime_type, client_id, org_id
+// Anything else passes through unchanged.
+
+const DB_TO_UI_COLUMN_MAP: Readonly<Record<string, string>> = {
+  created_at: 'date',
+  updated_at: 'updatedAt',
+  file_url: 'fileUrl',
+  mime_type: 'mimeType',
+  client_id: 'clientId',
+  org_id: 'orgId',
+};
+
+const UI_TO_DB_COLUMN_MAP: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(DB_TO_UI_COLUMN_MAP).map(([db, ui]) => [ui, db]),
+);
+
+/**
+ * Convert a single DB row (snake_case) to UI shape (camelCase).
+ * - `created_at` / `updated_at` → trimmed to YYYY-MM-DD for `date`, full ISO for `updatedAt`
+ * - `org_id` is stripped (UI types don't carry tenant identity)
+ * - Unknown columns pass through
+ */
+function rowToUi<T extends { id: string }>(row: Record<string, unknown>): T {
+  const out: Record<string, unknown> = {};
+  for (const [dbKey, value] of Object.entries(row)) {
+    const uiKey = DB_TO_UI_COLUMN_MAP[dbKey] ?? dbKey;
+    if (uiKey === 'orgId') continue; // strip tenant identity from UI
+    if (uiKey === 'date' && typeof value === 'string' && value.length >= 10) {
+      out[uiKey] = value.substring(0, 10); // YYYY-MM-DD
+    } else {
+      out[uiKey] = value;
+    }
+  }
+  return out as T;
 }
+
+/**
+ * Convert a single UI patch (camelCase) to DB columns (snake_case).
+ * Renames known UI→DB keys; passes unknown keys through; drops `date` if
+ * already a `created_at` form (the repo never writes `date` directly).
+ */
+function uiToRow<T>(ui: Partial<T>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(ui as Record<string, unknown>)) {
+    const dbKey = UI_TO_DB_COLUMN_MAP[key] ?? key;
+    out[dbKey] = value;
+  }
+  return out;
+}
+
+// Default mapper wired to the autoMap helpers. Views can still pass a custom
+// mapper via `options.mapper` to override.
+const defaultMapper = <T extends { id: string }>(): Mapper<T> => ({
+  toDb: (ui) => uiToRow<T>(ui),
+  fromDb: (row) => rowToUi<T>(row),
+});
 
 export function makeRepository<T extends { id: string }>(
   table: string,
@@ -55,7 +123,8 @@ export function makeRepository<T extends { id: string }>(
   options: MakeRepositoryOptions<T> = {},
 ): Repository<T> {
   const lsKey = `omk_${table}`;
-  const mapper = options.mapper ?? identityMapper<T>();
+  // D6 #97: prefer the custom mapper if passed; otherwise use the auto mapper.
+  const mapper: Mapper<T> = options.mapper ?? defaultMapper<T>();
 
   if (SUPABASE_READY) {
     return {

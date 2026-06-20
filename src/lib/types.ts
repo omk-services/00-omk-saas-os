@@ -39,6 +39,8 @@ export interface Agent {
   name: string;
   desc: string;
   status: string;
+  role?: 'owner' | 'manager' | 'operator' | 'viewer';
+  email?: string;
   tasks: number;
   totalTasks: number;
   accuracy: number;
@@ -59,19 +61,13 @@ export interface Sop {
   id: string;
   title: string;
   category: string;
+  status?: 'draft' | 'published' | 'archived';
+  content?: string;
+  version?: number;
   steps: number;
   time: string;
   uses: number;
   rating: number;
-}
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  avatar: string;
-  type: 'Founder' | 'Freelance' | 'AI';
-  load: number;
 }
 
 export interface RoleAllocation {
@@ -79,15 +75,6 @@ export interface RoleAllocation {
   domain: string;
   ownerName: string;
   ownerAvatar: string;
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  project: string;
-  deadline: string;
-  completed: boolean;
-  sopLink?: string;
 }
 
 export interface LegalDoc {

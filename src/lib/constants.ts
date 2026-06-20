@@ -1,4 +1,4 @@
-import { Client, Document, Agent, Invoice, Sop, Task, TeamMember } from './types';
+import { Client, Document, Agent, Invoice, Sop } from './types';
 
 export const CLIENTS: Client[] = [
   { id: 'C1', name: 'John Smith', email: 'john.smith@email.com', service: 'Immigration Visa', status: 'In Progress', progress: 65, date: 'Oct 14, 2025' },
@@ -41,20 +41,4 @@ export const SOPS: Sop[] = [
   { id: 'S6', title: 'Notary Public Verification', category: 'Notarial', steps: 5, time: '10 min', uses: 310, rating: 5.0 },
   { id: 'S7', title: 'System Incident Response', category: 'Technical', steps: 9, time: '20 min', uses: 12, rating: 4.5 },
   { id: 'S8', title: 'Overdue Payment Collection', category: 'Communication', steps: 4, time: '5 min', uses: 45, rating: 4.8 }
-];
-
-export const TASKS: Task[] = [
-  { id: 'T1', title: 'Validate visa application for John Smith', project: 'Immigration', deadline: 'Today', completed: false, sopLink: 'S1' },
-  { id: 'T2', title: 'Send Q3 invoice to Maria Garcia', project: 'Finance', deadline: 'Tomorrow', completed: false },
-  { id: 'T3', title: 'Follow up missing documents (Ahmed Hassan)', project: 'Compliance', deadline: 'Today', completed: false },
-  { id: 'T4', title: 'Translate birth certificate for Chen Wei', project: 'Translation', deadline: 'Oct 18, 2025', completed: true, sopLink: 'S4' },
-  { id: 'T5', title: 'Schedule notary appointment (Sarah Miller)', project: 'Notarial', deadline: 'Oct 22, 2025', completed: false }
-];
-
-export const TEAM: TeamMember[] = [
-  { id: 'M1', name: 'Amadou Diallo', role: 'Founder · Operations', avatar: 'AD', type: 'Founder', load: 78 },
-  { id: 'M2', name: 'Léa Martin', role: 'Senior Consultant', avatar: 'LM', type: 'Freelance', load: 62 },
-  { id: 'M3', name: 'Intake-Agent', role: 'CRM data collector', avatar: 'IA', type: 'AI', load: 45 },
-  { id: 'M4', name: 'Translator-Agent', role: 'Multilingual translator', avatar: 'TA', type: 'AI', load: 91 },
-  { id: 'M5', name: 'DocuFlow-Agent', role: 'Document automation', avatar: 'DF', type: 'AI', load: 38 }
 ];
