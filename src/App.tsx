@@ -1,14 +1,20 @@
+// src/App.tsx
+// Phase E (2026-06-20) — react-router-dom 7 wiring + ProtectedRoute + auth routes.
+//
+// D6 #51 (2026-06-19): Lazy-load all views via React.lazy + Suspense.
+// D6 #72 (2026-06-20): Removed DEMO_MODE flag. Auth is now required for all
+//   app routes. /login and /signup are public (no ShellLayout). 404 catch-all
+//   for unknown routes. ProtectedRoute wraps every ShellLayout child.
+
 import React, { Suspense, useState, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ShellLayout } from '@/components/ShellLayout';
-import { useAuth } from '@/auth/useAuth';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { LoginView } from '@/auth/LoginView';
 import { SignupView } from '@/auth/SignupView';
 import { ToastProvider } from '@/contexts/ToastContext';
 
-// D6 #51 (2026-06-19): Lazy-load all views via React.lazy + Suspense. Splits the
-// 573 KB single bundle into per-route chunks. Initial load drops to ~200 KB
-// (only ShellLayout + App shell). Each route downloads on-demand.
+// All 14 nav views lazy-loaded (D6 #51).
 const DashboardView = lazy(() => import('@/components/views/DashboardView').then(m => ({ default: m.DashboardView })));
 const ClientsView = lazy(() => import('@/components/views/ClientsView').then(m => ({ default: m.ClientsView })));
 const ClientDetailView = lazy(() => import('@/components/views/ClientDetailView').then(m => ({ default: m.ClientDetailView })));
@@ -24,6 +30,7 @@ const GrowthView = lazy(() => import('@/components/views/GrowthView').then(m => 
 const SalesView = lazy(() => import('@/components/views/SalesView').then(m => ({ default: m.SalesView })));
 const MarketplaceView = lazy(() => import('@/components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
 const ItDataView = lazy(() => import('@/components/views/ItDataView').then(m => ({ default: m.ItDataView })));
+const NotFoundView = lazy(() => import('@/components/views/NotFoundView').then(m => ({ default: m.NotFoundView })));
 
 const RouteFallback = (): React.ReactElement => (
   <div className="min-h-[40vh] flex items-center justify-center text-slate-400">
@@ -35,42 +42,28 @@ const RouteFallback = (): React.ReactElement => (
 );
 
 export default function App() {
-  const { user, isLoading } = useAuth();
-  const [authMode, setAuthMode] = useState<'app' | 'login' | 'signup'>('app');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // ⚠️ DEMO_MODE: temporary bypass to view dashboard without login.
-  //    TODO: remove this flag before production deploy.
-  const DEMO_MODE = true;
-
-  if (!DEMO_MODE && isLoading) {
-    return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center text-slate-500">
-        Loading…
-      </div>
-    );
-  }
-
-  if (!DEMO_MODE && !user) {
-    if (authMode === 'signup') {
-      return <SignupView onSwitchToLogin={() => setAuthMode('login')} />;
-    }
-    return <LoginView onSwitchToSignup={() => setAuthMode('signup')} />;
-  }
 
   return (
     <ToastProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public auth routes — no shell, no auth required. */}
+          <Route path="/login" element={<LoginView />} />
+          <Route path="/signup" element={<SignupView />} />
+
+          {/* Protected app shell — all 14 nav items + 404. */}
           <Route
             element={
-              <ShellLayout
-                sidebarCollapsed={sidebarCollapsed}
-                setSidebarCollapsed={setSidebarCollapsed}
-              />
+              <ProtectedRoute>
+                <ShellLayout
+                  sidebarCollapsed={sidebarCollapsed}
+                  setSidebarCollapsed={setSidebarCollapsed}
+                />
+              </ProtectedRoute>
             }
           >
-            <Route index element={<Suspense fallback={<RouteFallback />}><DashboardView /></Suspense>} />
+            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Suspense fallback={<RouteFallback />}><DashboardView /></Suspense>} />
             <Route path="clients" element={<Suspense fallback={<RouteFallback />}><ClientsView /></Suspense>} />
             <Route path="clients/:id" element={<Suspense fallback={<RouteFallback />}><ClientDetailView /></Suspense>} />
@@ -86,6 +79,9 @@ export default function App() {
             <Route path="sales" element={<Suspense fallback={<RouteFallback />}><SalesView /></Suspense>} />
             <Route path="marketplace" element={<Suspense fallback={<RouteFallback />}><MarketplaceView /></Suspense>} />
             <Route path="it-data" element={<Suspense fallback={<RouteFallback />}><ItDataView /></Suspense>} />
+
+            {/* 404 catch-all (D6 #73) — unknown routes inside the shell. */}
+            <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundView /></Suspense>} />
           </Route>
         </Routes>
       </BrowserRouter>

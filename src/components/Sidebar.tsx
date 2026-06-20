@@ -16,9 +16,11 @@ import {
   ShoppingBag,
   Server,
   PanelLeftClose,
-  Shield
+  Shield,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -74,7 +76,13 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async (): Promise<void> => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
   return (
     <aside
       className={`${
@@ -164,6 +172,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               <p className="text-sm font-semibold text-slate-900 truncate">{user?.email?.split('@')[0] || 'Guest'}</p>
               <p className="text-xs text-slate-500 truncate">{user?.email || 'Not signed in'}</p>
             </div>
+          )}
+          {user && !isCollapsed && (
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              aria-label="Sign out"
+              className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+          {user && isCollapsed && (
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              aria-label="Sign out"
+              className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>

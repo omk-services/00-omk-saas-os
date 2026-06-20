@@ -1,27 +1,32 @@
 // src/auth/LoginView.tsx
 import React, { useState } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from './useAuth';
 import { SUPABASE_READY } from '@/lib/supabase';
 
-interface LoginViewProps {
-  onSwitchToSignup: () => void;
-}
-
-export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToSignup }) => {
+export const LoginView: React.FC = () => {
   const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     setError(null);
     setLoading(true);
     const result = await signIn(email, password);
     setLoading(false);
-    if (result.error) setError(result.error);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    // On success, navigate to the originally intended route.
+    navigate(from, { replace: true });
   }
 
   return (
@@ -91,9 +96,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToSignup }) => {
 
         <div className="mt-6 text-center text-sm text-slate-600">
           Don't have an account?{' '}
-          <button onClick={onSwitchToSignup} className="text-emerald-600 hover:text-emerald-700 font-semibold">
+          <Link to="/signup" className="text-emerald-600 hover:text-emerald-700 font-semibold">
             Create one
-          </button>
+          </Link>
         </div>
       </div>
     </div>

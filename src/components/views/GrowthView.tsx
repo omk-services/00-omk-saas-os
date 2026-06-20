@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/Card';
+import { ViewShell } from '@/components/ViewShell';
 import { Lead } from '@/lib/types';
 import { MoreHorizontal, Plus, TrendingUp } from 'lucide-react';
 
@@ -59,13 +60,15 @@ const Column: React.FC<ColumnProps> = ({ title, status, leads, color }) => {
 
 export const GrowthView: React.FC = () => {
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 h-full">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Growth Pipeline</h1>
-          <p className="text-slate-500 text-sm mt-1">Simple view. Move cards right.</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <ViewShell
+      title="Growth Pipeline"
+      subtitle="Simple view. Move cards right."
+      loading={false}
+      error={null}
+      isEmpty={LEADS.length === 0}
+      emptyTitle="No leads yet"
+      actions={
+        <>
           <Card className="px-4 py-2">
             <span className="text-sm text-slate-500 mr-2">Total Pipeline:</span>
             <span className="text-lg font-bold text-emerald-700">€94k</span>
@@ -74,23 +77,24 @@ export const GrowthView: React.FC = () => {
             <Plus className="w-4 h-4" />
             New Lead
           </button>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-4 pb-2">
+          <Column title="Leads (Inbound)" status="Lead" leads={LEADS} color="bg-stone-50" />
+          <Column title="In Discussion" status="In Discussion" leads={LEADS} color="bg-amber-50" />
+          <Column title="Won (Signed)" status="Won" leads={LEADS} color="bg-emerald-50" />
         </div>
+        <Card className="p-5 flex items-center gap-3 text-sm text-slate-600">
+          <TrendingUp className="w-5 h-5 text-emerald-600" />
+          <span>
+            Conversion rate: <span className="font-semibold text-slate-900">20%</span> · Avg deal size:{' '}
+            <span className="font-semibold text-slate-900">€18.8k</span>
+          </span>
+        </Card>
       </div>
-
-      <div className="flex flex-col md:flex-row gap-4 pb-2">
-        <Column title="Leads (Inbound)" status="Lead" leads={LEADS} color="bg-stone-50" />
-        <Column title="In Discussion" status="In Discussion" leads={LEADS} color="bg-amber-50" />
-        <Column title="Won (Signed)" status="Won" leads={LEADS} color="bg-emerald-50" />
-      </div>
-
-      <Card className="p-5 flex items-center gap-3 text-sm text-slate-600">
-        <TrendingUp className="w-5 h-5 text-emerald-600" />
-        <span>
-          Conversion rate: <span className="font-semibold text-slate-900">20%</span> · Avg deal size:{' '}
-          <span className="font-semibold text-slate-900">€18.8k</span>
-        </span>
-      </Card>
-    </div>
+    </ViewShell>
   );
 };
 

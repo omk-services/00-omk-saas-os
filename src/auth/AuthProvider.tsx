@@ -1,10 +1,14 @@
 // src/auth/AuthProvider.tsx
-// Phase C — JWT-aware auth context. Reads 'org_id' + 'role' claims from Supabase session JWT.
+// Phase C + F — JWT-aware auth context + Edge Function signUp onboarding.
+// Reads 'org_id' + 'role' claims from Supabase session JWT (Phase A: custom_access_token_hook).
 // In saas mode, missing org_id → RLS will silently return 0 rows (warn per ADR-SUPABASE-001).
+// signUp() invokes the Edge Function `sign-up-organization` (Phase F) to atomically
+// create auth.users + omk_saas.organizations + omk_saas.memberships in one request.
 
 import React, { createContext, useEffect, useState, useCallback } from 'react';
 import { supabase, SUPABASE_READY } from '@/lib/supabase';
 import { APP_MODE } from '@/config/mode';
+import { setActiveOrgIdCache } from '@/lib/tenant';
 import type { AuthUser, Organization } from '@/lib/types';
 
 export interface AuthContextValue {
@@ -70,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated: true,
     };
     setUser(authUser);
+    setActiveOrgIdCache(authUser.orgId);  // tenant.ts reads this for non-React code paths
     if (authUser.orgId) {
       const org = await fetchUserOrg(authUser.orgId);
       setOrganization(org);
@@ -97,14 +102,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: null };
   }, []);
 
-  const signUp = useCallback(async (_email: string, _password: string, _orgName: string) => {
-    return { error: 'Organization provisioning requires HITL — see handoff notes. First sign in with a pre-provisioned account.' };
+  const signUp = useCallback(async (email: string, password: string, orgName: string) => {
+    if (!SUPABASE_READY) {
+      return { error: 'Supabase not configured (set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY)' };
+    }
+
+    // 1. Create the auth.users row via Supabase Auth (email auto-confirmed in MVP).
+    //    The Edge Function will detect the user already exists and skip re-creation.
+    const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { org_name: orgName } },
+    });
+    if (signUpErr) {
+      return { error: signUpErr.message };
+    }
+    if (!signUpData.user) {
+      return { error: 'Sign-up succeeded but no user was returned.' };
+    }
+
+    // 2. Immediately sign in to obtain a JWT (needed to call the Edge Function
+    //    when verify_jwt=true). In saas MVP, auto-confirm is enabled so this
+    //    succeeds without email verification.
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr) {
+      return { error: `User created but sign-in failed: ${signInErr.message}` };
+    }
+
+    // 3. Invoke the Edge Function to provision org + membership.
+    //    The function uses service_role and bypasses RLS.
+    const { data: fnData, error: fnErr } = await supabase.functions.invoke<{
+      userId?: string;
+      orgId?: string;
+      orgSlug?: string;
+      error?: string;
+    }>('sign-up-organization', {
+      body: {
+        email,
+        password,
+        orgName,
+        userId: signUpData.user.id,
+      },
+    });
+
+    if (fnErr) {
+      return { error: `Organization provisioning failed: ${fnErr.message}` };
+    }
+    if (!fnData || fnData.error) {
+      return { error: fnData?.error ?? 'Edge Function returned no data.' };
+    }
+
+    // 4. Force a fresh session so the JWT custom_access_token_hook picks up the
+    //    newly-created membership and injects the org_id claim.
+    await supabase.auth.refreshSession();
+    // Hydrate is triggered by onAuthStateChange listener set up in useEffect.
+
+    return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
     if (SUPABASE_READY) await supabase.auth.signOut();
     setUser(null);
     setOrganization(null);
+    setActiveOrgIdCache(null);
   }, []);
 
   return (
