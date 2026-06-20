@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import compression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
 import {defineConfig} from 'vite';
 
@@ -14,6 +15,12 @@ export default defineConfig(() => {
       // savings on top of gzip alone.
       compression({ algorithm: 'brotliCompress', ext: '.br', threshold: 1024 }),
       compression({ algorithm: 'gzip', ext: '.gz', threshold: 1024 }),
+      // D6 #57 (2026-06-19): Bundle visualizer for periodic audits. Outputs
+      // analyze/stats.html (treemap of all chunks). Outside dist/ so Vercel
+      // doesn't deploy it. Re-run via ANALYZE=1 npm run build to generate.
+      ...(process.env.ANALYZE === '1'
+        ? [visualizer({ filename: 'analyze/stats.html', open: false, gzipSize: true, brotliSize: true })]
+        : []),
     ],
     resolve: {
       alias: {

@@ -8,3 +8,6 @@ coverage/
 !.env.example
 
 .vercel
+
+# Bundle visualizer output (re-run via ANALYZE=1 npm run build)
+/analyze/
