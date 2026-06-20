@@ -1,5 +1,6 @@
 // src/data/repository.ts
-// ADR-OMK-001 D4 + ADR-OMK-005 (Phase A→F) + Phase I (D6 #97 default mapper).
+// ADR-OMK-001 D4 + ADR-OMK-005 (Phase A→F) + Phase I (D6 #97 default mapper)
+// + Zero Bug Sprint (D6 #99, D6 #101) — expanded mapper coverage.
 //
 // Two execution paths:
 //   1. Supabase Cloud (when SUPABASE_READY): queries target `omk_saas.*` schema
@@ -8,16 +9,26 @@
 //   2. localStorage (dev fallback): seeded with mocks from constants.ts. RLS
 //      is simulated by the in-memory filter `item.org_id === activeOrgId`.
 //
-// FIELD MAPPING (Phase I, D6 #97)
-//   Without a custom `options.mapper`, the default `autoMap<T>()` converts
-//   snake_case DB columns to camelCase UI fields for the canonical column
-//   names introduced in Phase A:
-//     - created_at   -> `date`       (YYYY-MM-DD substring, 10 chars)
-//     - updated_at   -> `updatedAt`  (full ISO string)
-//     - org_id       -> stripped (UI types don't carry tenant; repo injects)
-//     - file_url     -> `fileUrl`
-//     - mime_type    -> `mimeType`
-//     - client_id    -> `clientId`
+// FIELD MAPPING (D6 #99, D6 #101 — Zero Bug Sprint)
+//   Without a custom `options.mapper`, the default mapper translates EVERY
+//   canonical snake_case column to its camelCase UI equivalent. Full ISO
+//   strings are preserved (no substring trim — views format display via
+//   `formatDate()` from `lib/safe.ts`).
+//
+//   DB column          -> UI key          (notes)
+//   ──────────────────────────────────────────────────────────
+//   org_id             -> `orgId`         (stripped from UI; repo re-injects)
+//   client_id          -> `clientId`
+//   uploaded_by        -> `uploadedBy`
+//   file_url           -> `fileUrl`
+//   mime_type          -> `mimeType`
+//   created_at         -> `createdAt`     (FULL ISO; no substring)
+//   updated_at         -> `updatedAt`     (FULL ISO)
+//   issued_at          -> `issuedAt`
+//   due_at             -> `dueAt`
+//   paid_at            -> `paidAt`
+//   (anything else passes through unchanged)
+//
 //   Custom mappers (SalesView, LegalView) still take precedence — they pass
 //   `options.mapper` explicitly.
 //
@@ -64,12 +75,16 @@ const identityMapper = <T>(): Mapper<T> => ({
 // Anything else passes through unchanged.
 
 const DB_TO_UI_COLUMN_MAP: Readonly<Record<string, string>> = {
-  created_at: 'date',
-  updated_at: 'updatedAt',
+  org_id: 'orgId',
+  client_id: 'clientId',
+  uploaded_by: 'uploadedBy',
   file_url: 'fileUrl',
   mime_type: 'mimeType',
-  client_id: 'clientId',
-  org_id: 'orgId',
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+  issued_at: 'issuedAt',
+  due_at: 'dueAt',
+  paid_at: 'paidAt',
 };
 
 const UI_TO_DB_COLUMN_MAP: Readonly<Record<string, string>> = Object.fromEntries(
@@ -78,28 +93,30 @@ const UI_TO_DB_COLUMN_MAP: Readonly<Record<string, string>> = Object.fromEntries
 
 /**
  * Convert a single DB row (snake_case) to UI shape (camelCase).
- * - `created_at` / `updated_at` → trimmed to YYYY-MM-DD for `date`, full ISO for `updatedAt`
- * - `org_id` is stripped (UI types don't carry tenant identity)
- * - Unknown columns pass through
+ * - All canonical timestamp/date columns are mapped (no substring trim).
+ * - `org_id` is stripped (UI types don't carry tenant identity).
+ * - Unknown columns pass through (forward-compat with future schema additions).
+ * - In dev mode, logs unknown column keys for diagnostics.
  */
 function rowToUi<T extends { id: string }>(row: Record<string, unknown>): T {
   const out: Record<string, unknown> = {};
+  const isDev = import.meta.env.DEV;
   for (const [dbKey, value] of Object.entries(row)) {
     const uiKey = DB_TO_UI_COLUMN_MAP[dbKey] ?? dbKey;
     if (uiKey === 'orgId') continue; // strip tenant identity from UI
-    if (uiKey === 'date' && typeof value === 'string' && value.length >= 10) {
-      out[uiKey] = value.substring(0, 10); // YYYY-MM-DD
-    } else {
-      out[uiKey] = value;
+    if (uiKey === dbKey && isDev) {
+      // Column passes through unmapped — diagnostic only, not an error.
+      // eslint-disable-next-line no-console
+      console.debug(`[repo] DB column "${dbKey}" passes through unmapped`);
     }
+    out[uiKey] = value;
   }
   return out as T;
 }
 
 /**
  * Convert a single UI patch (camelCase) to DB columns (snake_case).
- * Renames known UI→DB keys; passes unknown keys through; drops `date` if
- * already a `created_at` form (the repo never writes `date` directly).
+ * Renames known UI→DB keys; passes unknown keys through.
  */
 function uiToRow<T>(ui: Partial<T>): Record<string, unknown> {
   const out: Record<string, unknown> = {};

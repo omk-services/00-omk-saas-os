@@ -1,3 +1,30 @@
+// src/lib/types.ts
+// Zero Bug Sprint (D6 #98) — TypeScript types for the OMK dashboard, rewritten
+// to match the canonical `omk_saas.*` schema exactly (ADR-OMK-001 ratified).
+//
+// Column source-of-truth: query `information_schema.columns WHERE table_schema = 'omk_saas'`
+// on the live Supabase Cloud project. Every field on every interface below
+// exists as a DB column. If the DB schema changes, regenerate this file.
+//
+// What changed vs the old types.ts (D6 #98):
+//   - Client: dropped `progress` (no DB col), `date` (use `createdAt`/`updatedAt`),
+//     status enum tightened to DB-allowed values.
+//   - Document: dropped `name`/`client`/`type`/`status`/`size` (none exist on
+//     documents table — only `title`/`clientId`/`fileUrl`/`mimeType`/`uploadedBy`).
+//   - Agent: dropped `desc`/`tasks`/`totalTasks`/`accuracy`/`time`/`capabilities`
+//     (none exist on agents table — only `name`/`role`/`email`/`status`).
+//   - Invoice: dropped `client` (use `clientId`), `service` (no DB col),
+//     `due` (use `dueAt`), `amount` is now `string` (PostgREST returns numeric
+//     as string to preserve precision).
+//   - Sop: dropped `steps`/`time`/`uses`/`rating` (none exist on sops table).
+//   - Added new types: SaleLead (for sales_leads table), Organization, Membership.
+//   - Removed UI-only types: Lead, SaleAgentStatus, SalePipelineItem,
+//     SalePipelineColumn, SaleLog, MarketplaceItem, StackConnection.
+//     Sales view now uses SaleLead type with derived shape.
+//     Marketplace/ItData are still hardcoded mocks (D2 backlog).
+//   - `createdAt`/`updatedAt` are full ISO strings (no substring trim) —
+//     views call `formatDate()` from `lib/safe.ts` for display.
+
 export type TabType =
   | 'dashboard'
   | 'finance'
@@ -14,134 +41,137 @@ export type TabType =
   | 'it-data'
   | 'settings';
 
+// ─────────────────────────────────────────────────────────────────────────
+// omk_saas schema-accurate types
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface Organization {
+  id: string;
+  orgId?: string;
+  name: string;
+  slug: string;
+  plan: 'starter' | 'growth' | 'enterprise';
+  status: 'active' | 'paused' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Membership {
+  id: string;
+  orgId?: string;
+  userId: string;
+  orgIdRef: string; // FK to organizations.id — renamed to avoid clash with the auto-mapped `orgId`
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Client {
   id: string;
+  orgId?: string;
   name: string;
-  email: string;
-  service: string;
-  status: string;
-  progress: number;
-  date: string;
+  email: string | null;
+  phone: string | null;
+  service: string | null;
+  status: 'active' | 'paused' | 'archived' | 'prospect';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Document {
   id: string;
-  name: string;
-  client: string;
-  type: string;
-  status: string;
-  size: string;
-  date: string;
+  orgId?: string;
+  clientId: string;
+  title: string;
+  fileUrl: string;
+  mimeType: string;
+  uploadedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Agent {
   id: string;
+  orgId?: string;
   name: string;
-  desc: string;
-  status: string;
-  role?: 'owner' | 'manager' | 'operator' | 'viewer';
-  email?: string;
-  tasks: number;
-  totalTasks: number;
-  accuracy: number;
-  time: string;
-  capabilities: string[];
+  role: 'owner' | 'manager' | 'operator' | 'viewer';
+  email: string | null;
+  status: 'active' | 'paused' | 'archived';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Invoice {
   id: string;
-  client: string;
-  service: string;
-  amount: number;
-  status: string;
-  due: string;
+  orgId?: string;
+  clientId: string;
+  /** PostgREST returns `numeric` as a string to preserve precision. */
+  amount: string;
+  currency: string;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  issuedAt: string | null;
+  dueAt: string | null;
+  paidAt: string | null;
+  createdAt: string;
 }
 
 export interface Sop {
   id: string;
+  orgId?: string;
   title: string;
-  category: string;
-  status?: 'draft' | 'published' | 'archived';
-  content?: string;
-  version?: number;
-  steps: number;
-  time: string;
-  uses: number;
-  rating: number;
-}
-
-export interface RoleAllocation {
-  id: string;
-  domain: string;
-  ownerName: string;
-  ownerAvatar: string;
+  content: string;
+  category: string | null;
+  version: number;
+  status: 'draft' | 'published' | 'archived';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LegalDoc {
   id: string;
+  orgId?: string;
+  clientId: string | null;
   title: string;
   type: 'PDF' | 'DOCX';
-  date: string;
-  status: 'Signed' | 'Pending' | 'Draft';
   category: 'Client' | 'Freelance' | 'Corporate';
+  status: 'Signed' | 'Pending' | 'Draft' | 'Archived';
+  fileUrl: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Lead {
+export interface SaleLead {
   id: string;
+  orgId?: string;
   name: string;
+  contact: string | null;
+  /** PostgREST returns numeric as string. */
   value: string;
-  status: 'Lead' | 'In Discussion' | 'Won';
-  agency?: string;
-  bleed?: string;
-  bottleneck?: string;
+  currency: string;
+  status: 'Active' | 'Paused' | 'Archived';
+  stage: 'Lead' | 'In Discussion' | 'Won' | 'Lost';
+  agency: string | null;
+  bleed: string | null;
+  bottleneck: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface SaleAgentStatus {
-  id: string;
-  name: string;
-  role: string;
-  status: 'Active' | 'Processing' | 'Idle';
-  iconName: 'Brain' | 'Cpu' | 'ShieldCheck' | 'Activity';
+// ─────────────────────────────────────────────────────────────────────────
+// Derived view-side shapes (computed from DB rows in views, not persisted)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** TasksView: SOPs displayed as procedures with a UI-only completed toggle. */
+export interface SopTaskRow extends Sop {
+  /** UI-local "completed" toggle (not persisted — D2 will add real tasks table). */
+  completed: boolean;
 }
 
-export interface SalePipelineItem {
-  id: string;
-  name: string;
-  sub: string;
-}
-
-export interface SalePipelineColumn {
-  id: string;
-  title: string;
-  items: SalePipelineItem[];
-}
-
-export interface SaleLog {
-  id: string;
-  time: string;
-  agent: string;
-  msg: string;
-  status: 'success' | 'info' | 'system';
-}
-
-export interface MarketplaceItem {
-  id: string;
-  title: string;
-  description: string;
-  price: string;
-  category: string;
-}
-
-export interface StackConnection {
-  id: string;
-  name: string;
-  status: 'Connected' | 'Error' | 'Maintenance';
-  latency: string;
-  uptime: string;
-  type: 'Database' | 'API' | 'Auth' | 'AI';
-}
-
-// === Auth + tenant types (Phase C) ===
+// ─────────────────────────────────────────────────────────────────────────
+// Auth + tenant types (Phase C, unchanged)
+// ─────────────────────────────────────────────────────────────────────────
 
 export interface AuthUser {
   id: string;
@@ -149,19 +179,6 @@ export interface AuthUser {
   orgId: string | null;
   role: string;
   isAuthenticated: boolean;
-}
-
-export interface Organization {
-  id: string;
-  name: string;
-  plan?: string;
-  createdAt?: string;
-}
-
-export interface Membership {
-  userId: string;
-  orgId: string;
-  role: 'owner' | 'admin' | 'member' | string;
 }
 
 export interface Session {
