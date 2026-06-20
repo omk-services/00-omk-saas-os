@@ -12,6 +12,7 @@ export interface Repository<T extends { id: string }> {
   findById(id: string): Promise<T | null>;
   create(item: T): Promise<T>;
   update(id: string, patch: Partial<T>): Promise<T>;
+  remove(id: string): Promise<void>;
 }
 
 export function makeRepository<T extends { id: string }>(table: string, seed: T[]): Repository<T> {
@@ -47,6 +48,10 @@ export function makeRepository<T extends { id: string }>(table: string, seed: T[
           .single();
         if (error) throw new Error(`[${table}] ${error.message}`);
         return data as T;
+      },
+      async remove(id: string): Promise<void> {
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) throw new Error(`[${table}] ${error.message}`);
       },
     };
   }
@@ -91,6 +96,11 @@ export function makeRepository<T extends { id: string }>(table: string, seed: T[
       next[index] = updated;
       write(next);
       return updated;
+    },
+    async remove(id: string): Promise<void> {
+      const current = read();
+      const next = current.filter((item) => item.id !== id);
+      write(next);
     },
   };
 }

@@ -4,6 +4,7 @@ import { ShellLayout } from '@/components/ShellLayout';
 import { useAuth } from '@/auth/useAuth';
 import { LoginView } from '@/auth/LoginView';
 import { SignupView } from '@/auth/SignupView';
+import { ToastProvider } from '@/contexts/ToastContext';
 import {
   DashboardView,
   ClientsView,
@@ -47,34 +48,36 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          element={
-            <ShellLayout
-              sidebarCollapsed={sidebarCollapsed}
-              setSidebarCollapsed={setSidebarCollapsed}
-            />
-          }
-        >
-          <Route index element={<DashboardView />} />
-          <Route path="dashboard" element={<DashboardView />} />
-          <Route path="clients" element={<ClientsView />} />
-          <Route path="clients/:id" element={<ClientDetailView />} />
-          <Route path="documents" element={<DocumentsView />} />
-          <Route path="agents" element={<AgentsView />} />
-          <Route path="finance" element={<FinanceView />} />
-          <Route path="sop" element={<SOPLibraryView />} />
-          <Route path="settings" element={<SettingsView />} />
-          <Route path="people" element={<PeopleView />} />
-          <Route path="tasks" element={<TasksView />} />
-          <Route path="legal" element={<LegalView />} />
-          <Route path="growth" element={<GrowthView />} />
-          <Route path="sales" element={<SalesView />} />
-          <Route path="marketplace" element={<MarketplaceView />} />
-          <Route path="it-data" element={<ItDataView />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            element={
+              <ShellLayout
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+              />
+            }
+          >
+            <Route index element={<DashboardView />} />
+            <Route path="dashboard" element={<DashboardView />} />
+            <Route path="clients" element={<ClientsView />} />
+            <Route path="clients/:id" element={<ClientDetailView />} />
+            <Route path="documents" element={<DocumentsView />} />
+            <Route path="agents" element={<AgentsView />} />
+            <Route path="finance" element={<FinanceView />} />
+            <Route path="sop" element={<SOPLibraryView />} />
+            <Route path="settings" element={<SettingsView />} />
+            <Route path="people" element={<PeopleView />} />
+            <Route path="tasks" element={<TasksView />} />
+            <Route path="legal" element={<LegalView />} />
+            <Route path="growth" element={<GrowthView />} />
+            <Route path="sales" element={<SalesView />} />
+            <Route path="marketplace" element={<MarketplaceView />} />
+            <Route path="it-data" element={<ItDataView />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

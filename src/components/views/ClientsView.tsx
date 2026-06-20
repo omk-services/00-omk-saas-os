@@ -3,9 +3,30 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { ProgressBar } from '@/components/ProgressBar';
+import { Modal } from '@/components/Modal';
+import { useToast } from '@/contexts/ToastContext';
 import { clientsRepo } from '@/data/clients.repo';
 import { Client } from '@/lib/types';
 import { Search, Plus, Users, Clock, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+
+const SERVICE_OPTIONS: ReadonlyArray<string> = [
+  'Immigration Visa',
+  'Business Formation',
+  'Tax Consulting',
+  'Certified Translation',
+  'Notarial',
+];
+
+const STATUS_OPTIONS: ReadonlyArray<string> = [
+  'New Request',
+  'In Progress',
+  'Under Review',
+  'Submitted',
+  'Validated',
+];
+
+const formatDate = (d: Date): string =>
+  d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
 export const ClientsView: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -13,29 +34,72 @@ export const ClientsView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    clientsRepo.list()
+  const [isOpen, setIsOpen] = useState(false);
+  const [form, setForm] = useState<{
+    name: string;
+    email: string;
+    service: string;
+    status: string;
+    progress: number;
+    notes: string;
+  }>({
+    name: '',
+    email: '',
+    service: '',
+    status: 'New Request',
+    progress: 10,
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const { showToast } = useToast();
+
+  const load = (): void => {
+    setLoading(true);
+    clientsRepo
+      .list()
       .then(setClients)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, []);
 
-  const handleAddClient = () => {
-    const name = prompt("Enter client's full name:");
-    const email = prompt("Enter client's email:");
-    const service = prompt("Enter service (e.g., LLC Formation, Tax Consulting):");
+  const openModal = (): void => {
+    setForm({ name: '', email: '', service: '', status: 'New Request', progress: 10, notes: '' });
+    setIsOpen(true);
+  };
+  const closeModal = (): void => {
+    if (saving) return;
+    setIsOpen(false);
+  };
 
-    if (name && email && service) {
+  const handleSave = async (): Promise<void> => {
+    if (!form.name.trim() || !form.email.trim() || !form.service) {
+      showToast('Name, email, and service are required.', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
       const newClient: Client = {
-        id: 'C' + (clients.length + 1),
-        name,
-        email,
-        service,
-        status: 'New Request',
-        progress: 10,
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        id: 'C' + (clients.length + 1) + '-' + Date.now(),
+        name: form.name.trim(),
+        email: form.email.trim(),
+        service: form.service,
+        status: form.status,
+        progress: Math.max(0, Math.min(100, Number(form.progress) || 0)),
+        date: formatDate(new Date()),
       };
-      void clientsRepo.create(newClient).then((c) => setClients((prev) => [...prev, c]));
+      const created = await clientsRepo.create(newClient);
+      setClients((prev) => [...prev, created]);
+      setIsOpen(false);
+      showToast(`Client "${created.name}" created.`, 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to create client.', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -63,8 +127,8 @@ export const ClientsView: React.FC = () => {
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Case Manager</h1>
           <p className="text-slate-500 text-sm mt-1">Manage and track all your client files and cases</p>
         </div>
-        <button 
-          onClick={handleAddClient}
+        <button
+          onClick={openModal}
           className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" /> New Client
@@ -94,9 +158,9 @@ export const ClientsView: React.FC = () => {
         <div className="p-4 border-b border-stone-200 flex gap-4">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search clients by name or email..." 
+            <input
+              type="text"
+              placeholder="Search clients by name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -138,7 +202,7 @@ export const ClientsView: React.FC = () => {
                   </td>
                   <td className="p-4">
                     <Badge variant={
-                      client.status === 'Validated' || client.status === 'Submitted' ? 'success' : 
+                      client.status === 'Validated' || client.status === 'Submitted' ? 'success' :
                       client.status === 'Under Review' ? 'warning' :
                       client.status === 'New Request' ? 'danger' : 'info'
                     }>
@@ -166,6 +230,109 @@ export const ClientsView: React.FC = () => {
           </table>
         </div>
       </Card>
+
+      <Modal
+        open={isOpen}
+        onClose={closeModal}
+        title="New Client"
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={saving}
+              className="bg-white border border-stone-200 text-slate-700 hover:bg-stone-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="bg-emerald-500 text-white hover:bg-emerald-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-60"
+            >
+              {saving ? 'Saving…' : 'Save Client'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Name *</label>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              placeholder="John Smith"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Email *</label>
+            <input
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              placeholder="john@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Service *</label>
+            <select
+              required
+              value={form.service}
+              onChange={(e) => setForm((f) => ({ ...f, service: e.target.value }))}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            >
+              <option value="">Select a service…</option>
+              {SERVICE_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Progress (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={form.progress}
+                onChange={(e) => setForm((f) => ({ ...f, progress: Number(e.target.value) }))}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Notes (optional)</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              placeholder="Internal notes about this client…"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
+
+export default ClientsView;

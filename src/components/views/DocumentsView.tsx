@@ -1,21 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
+import { Modal } from '@/components/Modal';
+import { useToast } from '@/contexts/ToastContext';
 import { documentsRepo } from '@/data/documents.repo';
 import { Document } from '@/lib/types';
-import { FileText, FileCheck, Clock, BookOpen, Search, Users, Briefcase, Eye, Download } from 'lucide-react';
+import { FileText, FileCheck, Clock, BookOpen, Search, Users, Briefcase, Eye, Download, Send } from 'lucide-react';
 
 export const DocumentsView: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [viewTarget, setViewTarget] = useState<Document | null>(null);
+  const [signatureTarget, setSignatureTarget] = useState<Document | null>(null);
+
+  const { showToast } = useToast();
+
   useEffect(() => {
-    documentsRepo.list()
+    documentsRepo
+      .list()
       .then(setDocuments)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleConfirmSignature = (): void => {
+    if (!signatureTarget) return;
+    const target = signatureTarget;
+    setSignatureTarget(null);
+    showToast(`Signature request sent to ${target.client}.`, 'success');
+  };
 
   if (loading) {
     return (
@@ -64,9 +79,9 @@ export const DocumentsView: React.FC = () => {
         <div className="p-4 border-b border-stone-200">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search documents..." 
+            <input
+              type="text"
+              placeholder="Search documents..."
               className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
             />
           </div>
@@ -82,7 +97,7 @@ export const DocumentsView: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <h4 className="font-semibold text-slate-900">{doc.name}</h4>
                     <Badge variant={
-                      doc.status === 'Completed' ? 'success' : 
+                      doc.status === 'Completed' ? 'success' :
                       doc.status === 'Auto-filled' ? 'info' :
                       doc.status === 'Under Review' ? 'warning' : 'danger'
                     }>{doc.status}</Badge>
@@ -96,15 +111,25 @@ export const DocumentsView: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-4 md:mt-0 lg:w-auto w-full justify-start md:justify-end">
-                <button className="px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-slate-600 bg-white border border-stone-200 rounded hover:bg-stone-50 transition-colors">
+                <button
+                  onClick={() => setViewTarget(doc)}
+                  className="px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-slate-600 bg-white border border-stone-200 rounded hover:bg-stone-50 transition-colors"
+                >
                   <Eye className="w-4 h-4" /> View
                 </button>
-                <button className="px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-slate-600 bg-white border border-stone-200 rounded hover:bg-stone-50 transition-colors">
+                <button
+                  disabled
+                  title="Available next sprint"
+                  className="px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-slate-400 bg-stone-50 border border-stone-200 rounded cursor-not-allowed opacity-60"
+                >
                   <Download className="w-4 h-4" /> Download
                 </button>
                 {doc.status !== 'Completed' && (
-                  <button className="px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded transition-colors">
-                    Request Signature
+                  <button
+                    onClick={() => setSignatureTarget(doc)}
+                    className="px-3 py-1.5 flex items-center gap-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded transition-colors"
+                  >
+                    <Send className="w-4 h-4" /> Request Signature
                   </button>
                 )}
               </div>
@@ -112,6 +137,96 @@ export const DocumentsView: React.FC = () => {
           ))}
         </div>
       </Card>
+
+      <Modal
+        open={viewTarget !== null}
+        onClose={() => setViewTarget(null)}
+        title={viewTarget?.name ?? 'Document'}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="bg-stone-50 text-slate-400 border border-stone-200 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-60 inline-flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" /> Download
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewTarget(null)}
+              className="bg-emerald-500 text-white hover:bg-emerald-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+            >
+              Close
+            </button>
+          </>
+        }
+      >
+        {viewTarget && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase">Client</p>
+                <p className="text-slate-800 font-medium mt-1">{viewTarget.client}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase">Category</p>
+                <p className="text-slate-800 font-medium mt-1">{viewTarget.type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase">Size</p>
+                <p className="text-slate-800 font-medium mt-1">{viewTarget.size}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase">Date</p>
+                <p className="text-slate-800 font-medium mt-1">{viewTarget.date}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-slate-500 font-semibold uppercase">Status</p>
+                <p className="text-slate-800 font-medium mt-1">{viewTarget.status}</p>
+              </div>
+            </div>
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              Preview not implemented yet — please Download to view the file content.
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={signatureTarget !== null}
+        onClose={() => setSignatureTarget(null)}
+        title="Request signature"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setSignatureTarget(null)}
+              className="bg-white border border-stone-200 text-slate-700 hover:bg-stone-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSignature}
+              className="bg-emerald-500 text-white hover:bg-emerald-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+            >
+              Send Request
+            </button>
+          </>
+        }
+      >
+        {signatureTarget && (
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Request signature from <span className="font-semibold">{signatureTarget.client}</span> for{' '}
+            <span className="font-semibold">{signatureTarget.name}</span>?
+          </p>
+        )}
+      </Modal>
     </div>
   );
 };
+
+export default DocumentsView;
