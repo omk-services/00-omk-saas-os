@@ -84,7 +84,10 @@ export const ClientsView: React.FC = () => {
     setSaving(true);
     try {
       const newClient: Client = {
-        id: 'C' + (clients.length + 1) + '-' + Date.now(),
+        // crypto.randomUUID() generates a real v4 UUID. The previous 'C' + counter +
+        // timestamp pattern was fine for localStorage (string PK) but Cloud
+        // PostgreSQL clients.id column is `uuid` type and rejected non-UUID strings.
+        id: crypto.randomUUID(),
         name: form.name.trim(),
         email: form.email.trim(),
         service: form.service,
