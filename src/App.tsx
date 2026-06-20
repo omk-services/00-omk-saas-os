@@ -1,27 +1,38 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ShellLayout } from '@/components/ShellLayout';
 import { useAuth } from '@/auth/useAuth';
 import { LoginView } from '@/auth/LoginView';
 import { SignupView } from '@/auth/SignupView';
 import { ToastProvider } from '@/contexts/ToastContext';
-import {
-  DashboardView,
-  ClientsView,
-  ClientDetailView,
-  DocumentsView,
-  AgentsView,
-  FinanceView,
-  SOPLibraryView,
-  SettingsView,
-  PeopleView,
-  TasksView,
-  LegalView,
-  GrowthView,
-  SalesView,
-  MarketplaceView,
-  ItDataView
-} from '@/components/views';
+
+// D6 #51 (2026-06-19): Lazy-load all views via React.lazy + Suspense. Splits the
+// 573 KB single bundle into per-route chunks. Initial load drops to ~200 KB
+// (only ShellLayout + App shell). Each route downloads on-demand.
+const DashboardView = lazy(() => import('@/components/views/DashboardView').then(m => ({ default: m.DashboardView })));
+const ClientsView = lazy(() => import('@/components/views/ClientsView').then(m => ({ default: m.ClientsView })));
+const ClientDetailView = lazy(() => import('@/components/views/ClientDetailView').then(m => ({ default: m.ClientDetailView })));
+const DocumentsView = lazy(() => import('@/components/views/DocumentsView').then(m => ({ default: m.DocumentsView })));
+const AgentsView = lazy(() => import('@/components/views/AgentsView').then(m => ({ default: m.AgentsView })));
+const FinanceView = lazy(() => import('@/components/views/FinanceView').then(m => ({ default: m.FinanceView })));
+const SOPLibraryView = lazy(() => import('@/components/views/SOPLibraryView').then(m => ({ default: m.SOPLibraryView })));
+const SettingsView = lazy(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
+const PeopleView = lazy(() => import('@/components/views/PeopleView').then(m => ({ default: m.PeopleView })));
+const TasksView = lazy(() => import('@/components/views/TasksView').then(m => ({ default: m.TasksView })));
+const LegalView = lazy(() => import('@/components/views/LegalView').then(m => ({ default: m.LegalView })));
+const GrowthView = lazy(() => import('@/components/views/GrowthView').then(m => ({ default: m.GrowthView })));
+const SalesView = lazy(() => import('@/components/views/SalesView').then(m => ({ default: m.SalesView })));
+const MarketplaceView = lazy(() => import('@/components/views/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
+const ItDataView = lazy(() => import('@/components/views/ItDataView').then(m => ({ default: m.ItDataView })));
+
+const RouteFallback = (): React.ReactElement => (
+  <div className="min-h-[40vh] flex items-center justify-center text-slate-400">
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+      <span className="text-sm">Loading…</span>
+    </div>
+  </div>
+);
 
 export default function App() {
   const { user, isLoading } = useAuth();
@@ -59,22 +70,22 @@ export default function App() {
               />
             }
           >
-            <Route index element={<DashboardView />} />
-            <Route path="dashboard" element={<DashboardView />} />
-            <Route path="clients" element={<ClientsView />} />
-            <Route path="clients/:id" element={<ClientDetailView />} />
-            <Route path="documents" element={<DocumentsView />} />
-            <Route path="agents" element={<AgentsView />} />
-            <Route path="finance" element={<FinanceView />} />
-            <Route path="sop" element={<SOPLibraryView />} />
-            <Route path="settings" element={<SettingsView />} />
-            <Route path="people" element={<PeopleView />} />
-            <Route path="tasks" element={<TasksView />} />
-            <Route path="legal" element={<LegalView />} />
-            <Route path="growth" element={<GrowthView />} />
-            <Route path="sales" element={<SalesView />} />
-            <Route path="marketplace" element={<MarketplaceView />} />
-            <Route path="it-data" element={<ItDataView />} />
+            <Route index element={<Suspense fallback={<RouteFallback />}><DashboardView /></Suspense>} />
+            <Route path="dashboard" element={<Suspense fallback={<RouteFallback />}><DashboardView /></Suspense>} />
+            <Route path="clients" element={<Suspense fallback={<RouteFallback />}><ClientsView /></Suspense>} />
+            <Route path="clients/:id" element={<Suspense fallback={<RouteFallback />}><ClientDetailView /></Suspense>} />
+            <Route path="documents" element={<Suspense fallback={<RouteFallback />}><DocumentsView /></Suspense>} />
+            <Route path="agents" element={<Suspense fallback={<RouteFallback />}><AgentsView /></Suspense>} />
+            <Route path="finance" element={<Suspense fallback={<RouteFallback />}><FinanceView /></Suspense>} />
+            <Route path="sop" element={<Suspense fallback={<RouteFallback />}><SOPLibraryView /></Suspense>} />
+            <Route path="settings" element={<Suspense fallback={<RouteFallback />}><SettingsView /></Suspense>} />
+            <Route path="people" element={<Suspense fallback={<RouteFallback />}><PeopleView /></Suspense>} />
+            <Route path="tasks" element={<Suspense fallback={<RouteFallback />}><TasksView /></Suspense>} />
+            <Route path="legal" element={<Suspense fallback={<RouteFallback />}><LegalView /></Suspense>} />
+            <Route path="growth" element={<Suspense fallback={<RouteFallback />}><GrowthView /></Suspense>} />
+            <Route path="sales" element={<Suspense fallback={<RouteFallback />}><SalesView /></Suspense>} />
+            <Route path="marketplace" element={<Suspense fallback={<RouteFallback />}><MarketplaceView /></Suspense>} />
+            <Route path="it-data" element={<Suspense fallback={<RouteFallback />}><ItDataView /></Suspense>} />
           </Route>
         </Routes>
       </BrowserRouter>
