@@ -25,10 +25,19 @@ const SIZE_CLASSES: Readonly<Record<ModalSize, string>> = {
 export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, footer, size = 'md' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
+  // Gate initial focus to ONE per open cycle. Without this, parent re-renders
+  // (e.g. controlled-input keystrokes that recreate onClose in JSX) re-fire
+  // the effect and yank focus back to the first input on every character.
+  const hasFocusedRef = useRef(false);
 
   // ESC key + focus first focusable on open
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hasFocusedRef.current = false;
+      return;
+    }
+    if (hasFocusedRef.current) return;
+
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose();
     };
@@ -44,6 +53,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
       if (focusable) {
         focusable.focus();
         if (focusable instanceof HTMLButtonElement) firstFocusableRef.current = focusable;
+        hasFocusedRef.current = true;
       }
     }, 0);
 
