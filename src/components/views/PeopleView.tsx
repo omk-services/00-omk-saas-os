@@ -1,20 +1,16 @@
+// src/components/views/PeopleView.tsx
+// Phase I (2026-06-20) — rewired to use agentsRepo instead of the dropped team table.
+// The UI concept of "team members" maps to AI agents (omk_saas.agents) — humans + AI
+// are rendered as a unified Capacity Load grid. Future D2 work: add a real
+// `omk_saas.team_members` table when human resources need their own CRUD.
+
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/contexts/ToastContext';
-import { teamRepo } from '@/data/team.repo';
-import { TeamMember, RoleAllocation } from '@/lib/types';
-import { Users, Shield, Cpu, AlertCircle, UserPlus } from 'lucide-react';
-
-const ROLE_ALLOCATIONS: ReadonlyArray<RoleAllocation> = [
-  { id: 'R1', domain: 'Operations', ownerName: 'Amadou Diallo', ownerAvatar: 'AD' },
-  { id: 'R2', domain: 'Sales', ownerName: 'Léa Martin', ownerAvatar: 'LM' },
-  { id: 'R3', domain: 'Finance', ownerName: 'Amadou Diallo', ownerAvatar: 'AD' },
-  { id: 'R4', domain: 'Legal', ownerName: 'Compliance-Sentinel', ownerAvatar: 'CS' },
-  { id: 'R5', domain: 'IT & Data', ownerName: 'DocuFlow-Agent', ownerAvatar: 'DF' }
-];
-
-const TYPE_OPTIONS: ReadonlyArray<TeamMember['type']> = ['Founder', 'Freelance', 'AI'];
+import { agentsRepo } from '@/data/agents.repo';
+import { Agent } from '@/lib/types';
+import { Users, Cpu, AlertCircle, UserPlus } from 'lucide-react';
 
 const initialsFromName = (name: string): string => {
   const parts = name.trim().split(/\s+/);
@@ -35,17 +31,18 @@ const loadText = (load: number): string => {
   return 'text-emerald-600';
 };
 
+const ROLE_OPTIONS: ReadonlyArray<Agent['role']> = ['manager', 'operator', 'viewer', 'owner'];
+
 interface FormState {
   name: string;
-  role: string;
-  type: TeamMember['type'];
-  load: number;
+  role: Agent['role'];
+  email: string;
 }
 
-const blankForm = (): FormState => ({ name: '', role: '', type: 'Freelance', load: 50 });
+const blankForm = (): FormState => ({ name: '', role: 'operator', email: '' });
 
 export const PeopleView: React.FC = () => {
-  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [members, setMembers] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +54,7 @@ export const PeopleView: React.FC = () => {
 
   const load = (): void => {
     setLoading(true);
-    teamRepo
+    agentsRepo
       .list()
       .then(setMembers)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
@@ -78,21 +75,19 @@ export const PeopleView: React.FC = () => {
   };
 
   const handleSave = async (): Promise<void> => {
-    if (!form.name.trim() || !form.role.trim()) {
-      showToast('Name and role are required.', 'error');
+    if (!form.name.trim()) {
+      showToast('Name is required.', 'error');
       return;
     }
     setSaving(true);
     try {
-      const newMember: TeamMember = {
-        id: 'M' + Date.now(),
+      const newAgent: Partial<Agent> = {
         name: form.name.trim(),
-        role: form.role.trim(),
-        avatar: initialsFromName(form.name),
-        type: form.type,
-        load: Math.max(0, Math.min(100, Number(form.load) || 0)),
+        role: form.role,
+        status: 'active',
+        email: form.email.trim() || undefined,
       };
-      const created = await teamRepo.create(newMember);
+      const created = await agentsRepo.create(newAgent);
       setMembers((prev) => [...prev, created]);
       setIsOpen(false);
       showToast(`Member "${created.name}" added.`, 'success');
@@ -103,9 +98,30 @@ export const PeopleView: React.FC = () => {
     }
   };
 
+  // Compute a "load" indicator from accuracy: high accuracy == low load.
+  // (Real load metric is D2 backlog; for now we surface a stable signal.)
+  const loadFromAccuracy = (accuracy: number): number => Math.max(5, 100 - accuracy);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse" role="status" aria-label="Loading">
+        <div className="h-8 bg-stone-200 rounded w-1/3"></div>
+        <div className="h-32 bg-stone-100 rounded"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700" role="alert">
+        Error: {error}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Team & Capacity</h1>
           <p className="text-slate-500 text-sm mt-1">Resource planning for humans and AI agents.</p>
@@ -124,46 +140,46 @@ export const PeopleView: React.FC = () => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="h-8 bg-stone-200 rounded w-1/3"></div>
-          <div className="h-32 bg-stone-100 rounded"></div>
-        </div>
-      ) : error ? (
-        <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700">Error: {error}</div>
-      ) : (
-        <>
-          <section className="space-y-4">
-            <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-emerald-600" />
-              Capacity Load
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {members.map((member) => (
+      <section className="space-y-4">
+        <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+          <Users className="w-5 h-5 text-emerald-600" />
+          Capacity Load
+        </h2>
+        {members.length === 0 ? (
+          <Card className="p-8 text-center text-slate-500">
+            <p className="text-sm">No team members yet. Click <span className="font-medium">Add New Member</span> to seed your team.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {members.map((member) => {
+              const load = loadFromAccuracy(member.accuracy);
+              return (
                 <Card key={member.id} className="p-5 hover:border-emerald-200 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
-                          member.type === 'AI'
+                          member.role === 'manager'
+                            ? 'bg-emerald-50 border border-emerald-100 text-emerald-600'
+                            : member.role === 'owner'
                             ? 'bg-purple-50 border border-purple-100 text-purple-600'
                             : 'bg-stone-50 border border-stone-100 text-stone-600'
                         }`}
                       >
-                        {member.avatar}
+                        {initialsFromName(member.name)}
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-slate-800 truncate">{member.name}</h3>
-                        <p className="text-xs text-slate-500 truncate">{member.role}</p>
+                        <p className="text-xs text-slate-500 truncate">{member.desc}</p>
                       </div>
                     </div>
-                    {member.type === 'AI' ? (
+                    {member.role === 'manager' || member.role === 'owner' ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-50 text-purple-600 border border-purple-100 shrink-0">
-                        <Cpu className="w-3 h-3 mr-1" /> AI
+                        <Cpu className="w-3 h-3 mr-1" /> {member.role}
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-stone-100 text-stone-500 border border-stone-200 shrink-0">
-                        {member.type}
+                        {member.role}
                       </span>
                     )}
                   </div>
@@ -171,61 +187,27 @@ export const PeopleView: React.FC = () => {
                     <div className="flex justify-between items-end mb-2">
                       <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Load</span>
                       <div className="flex items-center gap-1.5">
-                        {member.load > 90 && <AlertCircle className="w-3 h-3 text-amber-500" />}
-                        <span className={`text-sm font-bold ${loadText(member.load)}`}>{member.load}%</span>
+                        {load > 90 && <AlertCircle className="w-3 h-3 text-amber-500" />}
+                        <span className={`text-sm font-bold ${loadText(load)}`}>{load}%</span>
                       </div>
                     </div>
                     <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${loadColor(member.load)}`}
-                        style={{ width: `${member.load}%` }}
+                        className={`h-full rounded-full transition-all duration-500 ${loadColor(load)}`}
+                        style={{ width: `${load}%` }}
                       />
                     </div>
                   </div>
+                  <div className="mt-3 flex items-center justify-between text-[10px] text-slate-500">
+                    <span>Accuracy: {member.accuracy}%</span>
+                    <span>{member.tasks}/{member.totalTasks} tasks</span>
+                  </div>
                 </Card>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4 pt-2">
-            <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-emerald-600" />
-              Role Distribution
-            </h2>
-            <Card className="overflow-hidden">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-stone-50 text-xs uppercase font-semibold text-slate-500">
-                  <tr>
-                    <th className="px-6 py-3">Domain</th>
-                    <th className="px-6 py-3">Owner</th>
-                    <th className="px-6 py-3 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {ROLE_ALLOCATIONS.map((role) => (
-                    <tr key={role.id} className="hover:bg-stone-50/50 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-slate-700">{role.domain}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold text-slate-600 border border-stone-200">
-                            {role.ownerAvatar}
-                          </div>
-                          <span className="font-medium text-slate-600">{role.ownerName}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wide">
-                          Covered
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          </section>
-        </>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <Modal
         open={isOpen}
@@ -266,40 +248,26 @@ export const PeopleView: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
             <input
-              type="text"
-              required
-              value={form.role}
-              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              placeholder="e.g. Senior Translator"
+              placeholder="sarah@acme-demo.fr"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as TeamMember['type'] }))}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                {TYPE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Load (%)</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={form.load}
-                onChange={(e) => setForm((f) => ({ ...f, load: Number(e.target.value) }))}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Role</label>
+            <select
+              value={form.role}
+              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Agent['role'] }))}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            >
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
           </div>
         </div>
       </Modal>
