@@ -27,7 +27,13 @@ function decodeJwtClaims(token: string): { org_id?: string; role?: string; sub?:
     const payload = JSON.parse(atob(token.split('.')[1] ?? ''));
     return {
       org_id: payload.org_id ?? payload.app_metadata?.org_id,
-      role: payload.role ?? payload.app_metadata?.role,
+      // Phase II v3 (D6 #94 fix, 2026-06-20): the JWT top-level `role` claim is
+      // hardcoded to 'authenticated' in public.custom_access_token_hook so that
+      // PostgREST uses a real Postgres role (Supabase Cloud doesn't have an
+      // 'owner' / 'admin' / 'member' / 'viewer' role). The actual membership
+      // role string now lives in app_metadata.role — read that first for UI
+      // display, fall back to top-level (legacy) only if app_metadata is absent.
+      role: payload.app_metadata?.role ?? payload.role,
       sub: payload.sub,
       email: payload.email ?? payload.app_metadata?.email,
     };
