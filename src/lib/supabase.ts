@@ -25,9 +25,9 @@ if (!url || !anonKey) {
   );
 }
 
-// Schema override: only apply DB_SCHEMA if it's 'public' OR if env var overrides default.
-// PostgREST free-tier on Supabase Cloud exposes only 'public' at boot.
-const effectiveSchema: string = DB_SCHEMA === 'public' ? DB_SCHEMA : 'public';
+// Schema override: PostgREST free-tier on Supabase Cloud exposes only 'public' at boot.
+// Cast through unknown to bypass the literal-type narrowing (DB_SCHEMA is 'omk_internal' | 'omk_saas').
+const effectiveSchema: string = (DB_SCHEMA as unknown) === 'public' ? (DB_SCHEMA as string) : 'public';
 
 export const supabase = createClient(url ?? 'http://localhost:54321', anonKey ?? 'public-anon-key', {
   db: { schema: effectiveSchema },
