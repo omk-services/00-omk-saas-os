@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { PrefetchNavLink } from '@/components/PrefetchNavLink';
 import {
   LayoutDashboard,
   Users,
@@ -126,7 +126,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               {group.links.map((link) => {
                 const Icon = link.icon;
                 return (
-                  <NavLink
+                  <PrefetchNavLink
                     key={link.to}
                     to={link.to}
                     title={isCollapsed ? link.label : undefined}
@@ -146,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                         {!isCollapsed && <span className="truncate">{link.label}</span>}
                       </>
                     )}
-                  </NavLink>
+                  </PrefetchNavLink>
                 );
               })}
             </div>
