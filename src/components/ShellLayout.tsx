@@ -7,6 +7,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Search, Bell, ChevronRight } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface ShellLayoutProps {
   sidebarCollapsed: boolean;
@@ -87,7 +88,12 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({ sidebarCollapsed, setS
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto pb-12">
-            <Outlet />
+            {/* Zero Bug Sprint (D6 #95e): wrap the view Outlet in an ErrorBoundary
+                so a view crash shows a friendly error UI + "Back to Dashboard"
+                button, while the Sidebar (above) stays visible. */}
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </div>
       </main>

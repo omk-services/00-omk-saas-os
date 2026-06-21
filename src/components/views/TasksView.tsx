@@ -1,58 +1,57 @@
 // src/components/views/TasksView.tsx
-// Phase I (2026-06-20) — rewired to use sopsRepo (the dropped tasks table was retired).
-// SOPs serve as "executable procedures" = tasks. Future D2: add a real
-// `omk_saas.tasks` table with deadline + completed columns.
+// Zero Bug Sprint — rewritten to match omk_saas.sops schema (sops = procedures).
+//
+// Schema (no `steps`/`time`/`uses`/`rating` columns).
+// Bug fixes (D6 #98, D6 #100b, D6 #102, D6 #103):
+//   - Removed undefined `sop.steps` / `sop.time` / `sop.rating` (no DB cols).
+//   - Use `formatDate()` instead of undefined `sop.date`.
+//   - Use React Router <Link> instead of <a href> (preserves ShellLayout).
+//   - Added <BackButton /> + <EmptyState />.
 
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/contexts/ToastContext';
 import { sopsRepo } from '@/data/sops.repo';
 import { clientsRepo } from '@/data/clients.repo';
-import { Sop, Client } from '@/lib/types';
+import { Sop, SopTaskRow, Client } from '@/lib/types';
+import { SOP_STATUS_LABEL } from '@/lib/statusLabels';
 import { Check, BookOpen, ExternalLink, Plus } from 'lucide-react';
-
-interface UISopRow extends Sop {
-  /** UI-local "completed" toggle (not persisted — D2 will add real tasks table). */
-  completed: boolean;
-}
+import { BackButton } from '@/components/BackButton';
+import { EmptyState } from '@/components/EmptyState';
+import { safeArray } from '@/lib/safe';
 
 export const TasksView: React.FC = () => {
-  const [sops, setSops] = useState<UISopRow[]>([]);
+  const [tasks, setTasks] = useState<SopTaskRow[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<{ title: string; category: string }>({
-    title: '',
-    category: 'General',
-  });
+  const [form, setForm] = useState({ title: '', category: 'General' });
   const [saving, setSaving] = useState(false);
-
   const { showToast } = useToast();
 
-  const load = async (): Promise<void> => {
+  const load = (): void => {
     setLoading(true);
-    try {
-      const [s, c] = await Promise.all([sopsRepo.list(), clientsRepo.list()]);
-      setSops(
-        s.map((row) => ({
-          ...row,
-          completed: row.status === 'archived', // visual proxy for "done"
-        })),
-      );
-      setClients(c);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+    Promise.all([sopsRepo.list(), clientsRepo.list()])
+      .then(([s, c]) => {
+        // UI-local "completed" toggle proxy: archived SOPs are "done".
+        setTasks(
+          safeArray<Sop>(s).map((row) => ({
+            ...row,
+            completed: row.status === 'archived',
+          })),
+        );
+        setClients(safeArray<Client>(c));
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    void load();
+    load();
   }, []);
 
   const openModal = (): void => {
@@ -66,7 +65,7 @@ export const TasksView: React.FC = () => {
 
   const handleSave = async (): Promise<void> => {
     if (!form.title.trim()) {
-      showToast('SOP title is required.', 'error');
+      showToast('Title is required.', 'error');
       return;
     }
     setSaving(true);
@@ -74,10 +73,11 @@ export const TasksView: React.FC = () => {
       const newSop: Partial<Sop> = {
         title: form.title.trim(),
         category: form.category,
+        content: '',
         status: 'draft',
       };
       const created = await sopsRepo.create(newSop);
-      setSops((prev) => [...prev, { ...created, completed: false }]);
+      setTasks((prev) => [...prev, { ...created, completed: false }]);
       setIsOpen(false);
       showToast(`SOP "${created.title}" created.`, 'success');
     } catch (e) {
@@ -87,8 +87,9 @@ export const TasksView: React.FC = () => {
     }
   };
 
-  const toggleSop = (id: string): void => {
-    setSops((prev) => prev.map((s) => (s.id === id ? { ...s, completed: !s.completed } : s)));
+  const toggleTask = (id: string): void => {
+    // UI-local only — not persisted. D2 will add a real tasks table.
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
   };
 
   if (loading) {
@@ -103,20 +104,23 @@ export const TasksView: React.FC = () => {
   if (error) {
     return (
       <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-rose-700" role="alert">
-        Error: {error}
+        <p className="font-semibold">Error loading tasks</p>
+        <p className="text-sm mt-1">{error}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      <BackButton />
+
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">My Day</h1>
           <p className="text-slate-500 text-sm mt-1">Focus on execution. No noise.</p>
         </div>
         <div className="text-xs text-slate-500">
-          {sops.filter((s) => s.completed).length} / {sops.length} completed
+          {tasks.filter((t) => t.completed).length} / {tasks.length} completed
         </div>
       </div>
 
@@ -128,13 +132,14 @@ export const TasksView: React.FC = () => {
           <div className="col-span-2 text-right">Action</div>
         </div>
 
-        <div className="divide-y divide-stone-100">
-          {sops.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-sm">
-              No procedures yet. Click <span className="font-medium">Add quick task</span> below to seed one.
-            </div>
-          ) : (
-            sops.map((sop) => (
+        {tasks.length === 0 ? (
+          <EmptyState
+            title="No procedures yet"
+            description='Click "Add quick task" below to seed one.'
+          />
+        ) : (
+          <div className="divide-y divide-stone-100">
+            {tasks.map((sop) => (
               <div
                 key={sop.id}
                 className={`grid grid-cols-12 gap-4 p-4 items-center transition-colors ${
@@ -143,7 +148,7 @@ export const TasksView: React.FC = () => {
               >
                 <div className="col-span-1 flex justify-center">
                   <button
-                    onClick={() => toggleSop(sop.id)}
+                    onClick={() => toggleTask(sop.id)}
                     aria-label={sop.completed ? 'Mark incomplete' : 'Mark complete'}
                     className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${
                       sop.completed
@@ -165,29 +170,29 @@ export const TasksView: React.FC = () => {
                   </p>
                   <div className="flex items-center mt-1 text-xs text-slate-500">
                     <BookOpen className="w-3 h-3 mr-1" />
-                    <span>{sop.steps} steps · {sop.time} · rating {sop.rating}/5</span>
+                    <span>v{sop.version} · {SOP_STATUS_LABEL[sop.status]}</span>
                   </div>
                 </div>
 
                 <div className="col-span-2">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium bg-stone-100 text-slate-600 border border-stone-200">
-                    {sop.category}
+                    {sop.category ?? 'General'}
                   </span>
                 </div>
 
                 <div className="col-span-2 flex justify-end">
-                  <a
-                    href={`/sop`}
+                  <Link
+                    to="/sop"
                     className="flex items-center px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors"
                   >
                     <ExternalLink className="w-3 h-3 mr-1.5" />
-                    Open SOP
-                  </a>
+                    Open SOPs
+                  </Link>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="p-3 bg-stone-50 border-t border-stone-100 text-center">
           <button

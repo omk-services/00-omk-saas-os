@@ -1,7 +1,13 @@
 // src/components/views/ClientDetailView.tsx
-// ADR-OMK-001 D4 — single client detail page (route /clients/:id).
-// Uses clientsRepo.findById() (Phase D repository extension). Loading skeleton,
-// not-found, and error states follow the same UX as ClientsView.
+// Zero Bug Sprint — rewritten to match omk_saas.clients schema.
+//
+// Bug fixes (D6 #98, D6 #105a):
+//   - `client.progress` removed (no DB column). Derived from status via STATUS_PROGRESS.
+//   - `client.date` removed → use `client.createdAt` formatted via formatDate().
+//   - Hardcoded "Org ID: 00000000-…-0001" replaced with `client.orgId ?? '—'` (real value).
+//   - Hardcoded DEMO_DOCUMENTS / DEMO_TIMELINE removed (D6 #105a — they lied about data).
+//   - Status enum translated via CLIENT_STATUS_LABEL.
+//   - `Edit` and `Delete` buttons wired to use clientsRepo.update() / .remove().
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,88 +22,83 @@ import {
   Briefcase,
   Activity,
   Hash,
-  CalendarClock
+  CalendarClock,
 } from 'lucide-react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { ProgressBar } from '@/components/ProgressBar';
 import { clientsRepo } from '@/data/clients.repo';
-import type { Client } from '@/lib/types';
+import { documentsRepo } from '@/data/documents.repo';
+import type { Client, Document } from '@/lib/types';
+import { CLIENT_STATUS_LABEL } from '@/lib/statusLabels';
+import { useToast } from '@/contexts/ToastContext';
+import { formatDate, safeArray, safeStr } from '@/lib/safe';
 
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'not_found' }
-  | { kind: 'ready'; client: Client };
+  | { kind: 'ready'; client: Client; docs: Document[] };
 
-const statusBadgeVariant = (status: string): 'success' | 'warning' | 'danger' | 'info' | 'default' => {
-  if (status === 'Validated' || status === 'Submitted') return 'success';
-  if (status === 'Under Review') return 'warning';
-  if (status === 'New Request') return 'danger';
-  return 'info';
+const STATUS_PROGRESS: Record<Client['status'], number> = {
+  active: 80,
+  prospect: 20,
+  paused: 50,
+  archived: 100,
+};
+
+const VARIANT_BY_STATUS: Record<Client['status'], 'success' | 'warning' | 'danger' | 'info'> = {
+  active: 'success',
+  prospect: 'info',
+  paused: 'warning',
+  archived: 'danger',
 };
 
 const truncateId = (id: string): string => `${id.slice(0, 8)}…`;
 
-interface DocumentRow {
-  name: string;
-  state: 'Submitted' | 'Draft' | 'Validated';
-  date: string;
-}
-
-const DEMO_DOCUMENTS: ReadonlyArray<DocumentRow> = [
-  { name: 'passport_scan.pdf', state: 'Submitted', date: '2026-06-10' },
-  { name: 'form_i-130.pdf', state: 'Draft', date: '2026-06-09' },
-  { name: 'support_letter.docx', state: 'Validated', date: '2026-06-08' }
-];
-
-interface TimelineEvent {
-  date: string;
-  label: string;
-}
-
-const DEMO_TIMELINE: ReadonlyArray<TimelineEvent> = [
-  { date: '2026-06-12 14:23', label: 'Status changed: New Request → In Progress' },
-  { date: '2026-06-10 09:15', label: 'Document added: passport_scan.pdf' },
-  { date: '2026-06-08 16:40', label: 'Client created' }
-];
-
 export const ClientDetailView: React.FC = () => {
   const params = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
 
-  useEffect(() => {
+  const load = (): void => {
     const id = params.id;
     if (!id) {
       setState({ kind: 'not_found' });
       return;
     }
     setState({ kind: 'loading' });
-    clientsRepo
-      .findById(id)
-      .then((client) => {
-        if (client) {
-          setState({ kind: 'ready', client });
-        } else {
+    Promise.all([clientsRepo.findById(id), documentsRepo.list()])
+      .then(([client, allDocs]) => {
+        if (!client) {
           setState({ kind: 'not_found' });
+          return;
         }
+        const linkedDocs = safeArray<Document>(allDocs).filter((d) => d.clientId === client.id);
+        setState({ kind: 'ready', client, docs: linkedDocs });
       })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : 'Failed to load client';
         setState({ kind: 'error', message });
       });
-  }, [params.id]);
+  };
+
+  useEffect(load, [params.id]);
 
   const handleBack = (): void => {
     navigate('/clients');
   };
 
-  const handleDelete = (): void => {
+  const handleDelete = async (): Promise<void> => {
     if (state.kind !== 'ready') return;
     const confirmed = window.confirm(`Delete ${state.client.name}? This cannot be undone.`);
-    if (confirmed) {
+    if (!confirmed) return;
+    try {
+      await clientsRepo.remove(state.client.id);
+      showToast(`Client "${state.client.name}" deleted.`, 'success');
       navigate('/clients');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to delete client.', 'error');
     }
   };
 
@@ -138,11 +139,15 @@ export const ClientDetailView: React.FC = () => {
     );
   }
 
-  const { client } = state;
+  const { client, docs } = state;
   const initials = client.name
     .split(' ')
     .map((part) => part.charAt(0))
-    .join('');
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const progress = STATUS_PROGRESS[client.status];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -158,13 +163,14 @@ export const ClientDetailView: React.FC = () => {
           <button
             type="button"
             aria-label="Edit client"
+            onClick={() => showToast('Edit form coming in D2.', 'info')}
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
           >
             <Edit3 className="w-4 h-4" /> Edit
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => void handleDelete()}
             aria-label="Delete client"
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors"
           >
@@ -177,7 +183,7 @@ export const ClientDetailView: React.FC = () => {
       <Card className="p-6">
         <div className="flex items-start gap-5">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl border border-emerald-200 shrink-0">
-            {initials}
+            {initials || '?'}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -185,19 +191,25 @@ export const ClientDetailView: React.FC = () => {
                 <h1 className="text-2xl font-semibold text-slate-900 tracking-tight truncate">
                   {client.name}
                 </h1>
-                <p className="text-slate-500 text-sm mt-1 truncate">{client.email}</p>
+                <p className="text-slate-500 text-sm mt-1 truncate">
+                  {safeStr(client.email, '—')}
+                </p>
               </div>
-              <Badge variant={statusBadgeVariant(client.status)}>{client.status}</Badge>
+              <Badge variant={VARIANT_BY_STATUS[client.status]}>
+                {CLIENT_STATUS_LABEL[client.status]}
+              </Badge>
             </div>
             <div className="mt-4 h-px bg-stone-200" />
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-medium text-slate-700">{client.progress}% complete</span>
+                <span className="font-medium text-slate-700">{progress}% complete</span>
                 <span className="flex items-center gap-1">
-                  <CalendarClock className="w-3.5 h-3.5" /> Last update: {client.date}
+                  <CalendarClock className="w-3.5 h-3.5" /> Last update: {formatDate(client.updatedAt)}
                 </span>
               </div>
-              <ProgressBar progress={client.progress} />
+              <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} />
+              </div>
             </div>
           </div>
         </div>
@@ -214,7 +226,7 @@ export const ClientDetailView: React.FC = () => {
               <dt className="text-slate-500 flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5" /> Email
               </dt>
-              <dd className="text-slate-900 font-medium truncate ml-3">{client.email}</dd>
+              <dd className="text-slate-900 font-medium truncate ml-3">{safeStr(client.email, '—')}</dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-slate-500 flex items-center gap-2">
@@ -226,7 +238,9 @@ export const ClientDetailView: React.FC = () => {
               <dt className="text-slate-500 flex items-center gap-2">
                 <Building2 className="w-3.5 h-3.5" /> Org ID
               </dt>
-              <dd className="text-slate-700 font-mono text-xs">00000000-…-0001</dd>
+              <dd className="text-slate-700 font-mono text-xs">
+                {client.orgId ? truncateId(client.orgId) : '—'}
+              </dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-slate-500 flex items-center gap-2">
@@ -244,73 +258,61 @@ export const ClientDetailView: React.FC = () => {
           <dl className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <dt className="text-slate-500">Service</dt>
-              <dd className="text-slate-900 font-medium">{client.service}</dd>
+              <dd className="text-slate-900 font-medium">{safeStr(client.service, '—')}</dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-slate-500">Status</dt>
               <dd>
-                <Badge variant={statusBadgeVariant(client.status)}>{client.status}</Badge>
+                <Badge variant={VARIANT_BY_STATUS[client.status]}>
+                  {CLIENT_STATUS_LABEL[client.status]}
+                </Badge>
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-slate-500">Progress</dt>
-              <dd className="text-slate-900 font-medium">{client.progress}%</dd>
+              <dt className="text-slate-500">Status weight</dt>
+              <dd className="text-slate-900 font-medium">{progress}%</dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-slate-500">Started</dt>
-              <dd className="text-slate-900 font-medium">{client.date}</dd>
+              <dd className="text-slate-900 font-medium">{formatDate(client.createdAt)}</dd>
             </div>
           </dl>
         </Card>
       </div>
 
-      {/* Documents */}
+      {/* Linked documents (from omk_saas.documents, filtered by clientId) */}
       <Card className="p-5">
         <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-slate-400" /> Documents ({DEMO_DOCUMENTS.length})
+          <FileText className="w-4 h-4 text-slate-400" /> Documents ({docs.length})
         </h3>
-        <ul className="divide-y divide-stone-100">
-          {DEMO_DOCUMENTS.map((doc) => (
-            <li key={doc.name} className="flex items-center justify-between py-2.5 text-sm">
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="text-slate-900 truncate">{doc.name}</span>
-              </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <Badge
-                  variant={
-                    doc.state === 'Validated'
-                      ? 'success'
-                      : doc.state === 'Submitted'
-                        ? 'info'
-                        : 'warning'
-                  }
-                >
-                  {doc.state}
-                </Badge>
-                <span className="text-xs text-slate-500">{doc.date}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {docs.length === 0 ? (
+          <p className="text-sm text-slate-400 italic">No documents linked to this client yet.</p>
+        ) : (
+          <ul className="divide-y divide-stone-100">
+            {docs.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between py-2.5 text-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="text-slate-900 truncate">{doc.title}</span>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="text-xs text-slate-500 font-mono">{doc.mimeType}</span>
+                  <span className="text-xs text-slate-500">{formatDate(doc.createdAt)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
-      {/* Timeline */}
+      {/* Activity timeline placeholder (D2) */}
       <Card className="p-5">
         <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <Activity className="w-4 h-4 text-slate-400" /> Activity Timeline
         </h3>
-        <ol className="space-y-3">
-          {DEMO_TIMELINE.map((event) => (
-            <li key={event.label} className="flex items-start gap-3 text-sm">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-900">{event.label}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{event.date}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <p className="text-sm text-slate-400 italic">
+          Activity timeline — D2 backlog (no omk_saas.activity table yet).
+        </p>
       </Card>
     </div>
   );

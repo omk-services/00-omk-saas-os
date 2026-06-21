@@ -1,15 +1,25 @@
 import React from 'react';
 import { Card } from '@/components/Card';
 import { ViewShell } from '@/components/ViewShell';
-import { StackConnection } from '@/lib/types';
 import { Server, Database, Activity, Wifi, Shield, HardDrive, RefreshCw } from 'lucide-react';
+
+// Zero Bug Sprint (D6 #98) — local StackConnection interface (mock-only view).
+// Defined inline because StackConnection was removed from types.ts (no DB table).
+interface StackConnection {
+  id: string;
+  name: string;
+  status: 'Connected' | 'Maintenance' | 'Error';
+  latency: string;
+  uptime: string;
+  type: 'Database' | 'API' | 'Auth' | 'AI';
+}
 
 const STACK_CONNECTIONS: ReadonlyArray<StackConnection> = [
   { id: 'C1', name: 'Supabase Postgres', status: 'Connected', latency: '24ms', uptime: '99.98%', type: 'Database' },
   { id: 'C2', name: 'Stripe API', status: 'Connected', latency: '112ms', uptime: '99.92%', type: 'API' },
   { id: 'C3', name: 'Gemini Inference', status: 'Connected', latency: '380ms', uptime: '99.85%', type: 'AI' },
   { id: 'C4', name: 'Auth (JWT Hook)', status: 'Connected', latency: '18ms', uptime: '100%', type: 'Auth' },
-  { id: 'C5', name: 'S3 Object Store', status: 'Maintenance', latency: '—', uptime: '99.50%', type: 'Database' }
+  { id: 'C5', name: 'S3 Object Store', status: 'Maintenance', latency: '—', uptime: '99.50%', type: 'Database' },
 ];
 
 const iconForType = (type: StackConnection['type']): React.ComponentType<{ className?: string }> => {

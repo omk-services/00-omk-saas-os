@@ -1,15 +1,23 @@
 import React from 'react';
 import { Card } from '@/components/Card';
 import { ViewShell } from '@/components/ViewShell';
-import { Lead } from '@/lib/types';
 import { MoreHorizontal, Plus, TrendingUp } from 'lucide-react';
+
+// Zero Bug Sprint (D6 #98) — local Lead interface (mock-only view, no DB table).
+// Defined inline because Lead was removed from types.ts (no canonical schema).
+interface Lead {
+  id: string;
+  name: string;
+  value: string;
+  status: 'Lead' | 'In Discussion' | 'Won';
+}
 
 const LEADS: ReadonlyArray<Lead> = [
   { id: 'GL1', name: 'TechFlow Industries', value: '€18k', status: 'Lead' },
   { id: 'GL2', name: 'Crimson Creative', value: '€12k', status: 'Lead' },
   { id: 'GL3', name: 'GreenScale Co-op', value: '€32k', status: 'In Discussion' },
   { id: 'GL4', name: 'Zenith SEO', value: '€8k', status: 'In Discussion' },
-  { id: 'GL5', name: 'Alaric Chen LLC', value: '€24k', status: 'Won' }
+  { id: 'GL5', name: 'Alaric Chen LLC', value: '€24k', status: 'Won' },
 ];
 
 interface ColumnProps {
