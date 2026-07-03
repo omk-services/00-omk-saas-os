@@ -32,6 +32,14 @@ const MarketplaceView = lazy(() => import('@/components/views/MarketplaceView').
 const ItDataView = lazy(() => import('@/components/views/ItDataView').then(m => ({ default: m.ItDataView })));
 const NotFoundView = lazy(() => import('@/components/views/NotFoundView').then(m => ({ default: m.NotFoundView })));
 
+// Sidebar V2 — Triptyque 1+2+Duo fusion routes (2026-07-03 /people-agents, /operations-knowledge, /it-software-kernel, /product).
+// D4 append-only: legacy routes /people, /agents, /documents, /sop, /it-data remain live.
+const PeopleAgentsView = lazy(() => import('@/components/views/PeopleAgentsView').then(m => ({ default: m.PeopleAgentsView })));
+const OperationsKnowledgeView = lazy(() => import('@/components/views/OperationsKnowledgeView').then(m => ({ default: m.OperationsKnowledgeView })));
+const ItSoftwareKernelView = lazy(() => import('@/components/views/ItSoftwareKernelView').then(m => ({ default: m.ItSoftwareKernelView })));
+const ProductView = lazy(() => import('@/components/views/ProductView').then(m => ({ default: m.ProductView })));
+const FilialesMatrixView = lazy(() => import('@/components/views/FilialesMatrixView').then(m => ({ default: m.FilialesMatrixView })));
+
 const RouteFallback = (): React.ReactElement => (
   <div className="min-h-[40vh] flex items-center justify-center text-slate-400">
     <div className="flex items-center gap-3">
@@ -79,6 +87,13 @@ export default function App() {
             <Route path="sales" element={<Suspense fallback={<RouteFallback />}><SalesView /></Suspense>} />
             <Route path="marketplace" element={<Suspense fallback={<RouteFallback />}><MarketplaceView /></Suspense>} />
             <Route path="it-data" element={<Suspense fallback={<RouteFallback />}><ItDataView /></Suspense>} />
+
+            {/* Sidebar V2 — Triptyque 1+2+Duo fusion routes (D4 append-only — legacy routes kept above). */}
+            <Route path="people-agents" element={<Suspense fallback={<RouteFallback />}><PeopleAgentsView /></Suspense>} />
+            <Route path="operations-knowledge" element={<Suspense fallback={<RouteFallback />}><OperationsKnowledgeView /></Suspense>} />
+            <Route path="it-software-kernel" element={<Suspense fallback={<RouteFallback />}><ItSoftwareKernelView /></Suspense>} />
+            <Route path="product" element={<Suspense fallback={<RouteFallback />}><ProductView /></Suspense>} />
+            <Route path="filiales" element={<Suspense fallback={<RouteFallback />}><FilialesMatrixView /></Suspense>} />
 
             {/* 404 catch-all (D6 #73) — unknown routes inside the shell. */}
             <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundView /></Suspense>} />
