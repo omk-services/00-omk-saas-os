@@ -3,8 +3,6 @@ import { PrefetchNavLink } from '@/components/PrefetchNavLink';
 import {
   LayoutDashboard,
   Users,
-  FileText,
-  Cpu,
   CreditCard,
   BookOpen,
   Settings,
@@ -38,38 +36,43 @@ interface NavGroup {
   links: ReadonlyArray<NavLinkSpec>;
 }
 
+// Sidebar V2 (2026-07-03, Mavis/MC A3 Book) — Triptyque 1+2+Duo regroupé dans les 4 sections Digital Garden existantes.
+// D4 append-only: legacy routes /people, /agents, /documents, /sop, /it-data remain live in App.tsx (canonical).
+//   CULTIVATE = Triptyque 1 (foundation/backbone): People/Agents | Operations/Knowledge | IT Software Kernel
+//   NURTURE   = day-to-day operations runway
+//   BLOOM     = Triptyque 2 (GTM): Product | Growth | Sales Sanctum
+//   ROOTS     = Duo (guard rails): Finance | Legal  + Settings (Mark-style arborescences per-user)
 const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     title: 'CULTIVATE',
     links: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/finance', label: 'Finance', icon: CreditCard },
-      { to: '/people', label: 'People', icon: UserCog }
+      { to: '/people-agents', label: 'People / Agents', icon: UserCog },
+      { to: '/operations-knowledge', label: 'Operations / Knowledge', icon: BookOpen },
+      { to: '/it-software-kernel', label: 'IT Software Kernel', icon: Server }
     ]
   },
   {
     title: 'NURTURE',
     links: [
       { to: '/clients', label: 'Clients', icon: Users },
-      { to: '/documents', label: 'Knowledge', icon: FileText },
-      { to: '/sop', label: 'SOP Library', icon: BookOpen },
-      { to: '/tasks', label: 'Tasks', icon: CheckSquare }
+      { to: '/tasks', label: 'Tasks', icon: CheckSquare },
+      { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag }
     ]
   },
   {
     title: 'BLOOM',
     links: [
-      { to: '/agents', label: 'AI Agents Network', icon: Cpu },
+      { to: '/product', label: 'Product', icon: Rocket },
       { to: '/growth', label: 'Growth', icon: Rocket },
-      { to: '/sales', label: 'Sales Sanctum', icon: ShieldCheck },
-      { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag }
+      { to: '/sales', label: 'Sales Sanctum', icon: ShieldCheck }
     ]
   },
   {
     title: 'ROOTS',
     links: [
+      { to: '/finance', label: 'Finance', icon: CreditCard },
       { to: '/legal', label: 'Legal', icon: Scale },
-      { to: '/it-data', label: 'IT & Data', icon: Server },
       { to: '/settings', label: 'Settings', icon: Settings }
     ]
   }
