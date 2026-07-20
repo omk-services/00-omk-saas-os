@@ -101,6 +101,27 @@ export interface Agent {
   updatedAt: string;
 }
 
+/**
+ * Hermes Agent Root — runtime telemetry columns added by migration
+ * `sql/07_hermes_agent_root.sql`. All fields are nullable so existing rows
+ * remain valid; the dashboard derives sane defaults from `status` / `role`
+ * until the ingest pipeline (Phase 2) starts populating these.
+ */
+export interface HerAgentMeta {
+  hermesCode: string | null;
+  channel: string | null;
+  state: string | null;
+  currentTask: string | null;
+  loadPct: number | null;
+  tokensToday: number | null;
+  tasksToday: number | null;
+  successPct: number | null;
+  defaultModel: string | null;
+}
+
+/** Intersection of the canonical agent shape and its optional Hermes telemetry. */
+export type AgentWithHermes = Agent & Partial<HerAgentMeta>;
+
 export interface Invoice {
   id: string;
   orgId?: string;

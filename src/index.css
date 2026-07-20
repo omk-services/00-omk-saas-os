@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-ink: oklch(0.16 0.012 50);
+  --color-cream: oklch(0.97 0.012 75);
+  --color-ember: oklch(0.66 0.22 38);
+  --color-ember-soft: oklch(0.78 0.16 50);
+  --color-her-surface: oklch(0.93 0.012 75);
+  --color-her-border: oklch(0.85 0.012 70);
+  --color-her-muted: oklch(0.45 0.018 60);
+
+  --font-display: "Instrument Serif", "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
 :root {
   --background: #fcfcfb; /* stone-50 chaud */
   --foreground: #1c1917; /* stone-900 */
@@ -14,6 +27,16 @@
   --stone-500: #78716c;
   --stone-700: #44403c;
   --stone-800: #292524;
+
+  /* Hermes Agent Root palette (KomputerMechanic template).
+     D4 forward-only — local CSS tokens only, no Tailwind theme overrides. */
+  --her-ink: oklch(0.16 0.012 50);
+  --her-cream: oklch(0.97 0.012 75);
+  --her-ember: oklch(0.66 0.22 38);
+  --her-ember-soft: oklch(0.78 0.16 50);
+  --her-surface: oklch(0.93 0.012 75);
+  --her-border: oklch(0.85 0.012 70);
+  --her-muted-fg: oklch(0.45 0.018 60);
 }
 
 body {

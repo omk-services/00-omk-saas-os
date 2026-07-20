@@ -39,6 +39,9 @@ const OperationsKnowledgeView = lazy(() => import('@/components/views/Operations
 const ItSoftwareKernelView = lazy(() => import('@/components/views/ItSoftwareKernelView').then(m => ({ default: m.ItSoftwareKernelView })));
 const ProductView = lazy(() => import('@/components/views/ProductView').then(m => ({ default: m.ProductView })));
 const FilialesMatrixView = lazy(() => import('@/components/views/FilialesMatrixView').then(m => ({ default: m.FilialesMatrixView })));
+// Hermes Agent Root — Mission Control hero page (route /agent-root).
+// D4 append-only: served alongside /agents and /people-agents for the swarm lane.
+const AgentRootView = lazy(() => import('@/components/views/AgentRootView').then(m => ({ default: m.AgentRootView })));
 
 const RouteFallback = (): React.ReactElement => (
   <div className="min-h-[40vh] flex items-center justify-center text-slate-400">
@@ -94,6 +97,9 @@ export default function App() {
             <Route path="it-software-kernel" element={<Suspense fallback={<RouteFallback />}><ItSoftwareKernelView /></Suspense>} />
             <Route path="product" element={<Suspense fallback={<RouteFallback />}><ProductView /></Suspense>} />
             <Route path="filiales" element={<Suspense fallback={<RouteFallback />}><FilialesMatrixView /></Suspense>} />
+
+            {/* Hermes Agent Root — Mission Control landing page (D4 append-only alongside legacy /agents). */}
+            <Route path="agent-root" element={<Suspense fallback={<RouteFallback />}><AgentRootView /></Suspense>} />
 
             {/* 404 catch-all (D6 #73) — unknown routes inside the shell. */}
             <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundView /></Suspense>} />

@@ -85,6 +85,14 @@ const DB_TO_UI_COLUMN_MAP: Readonly<Record<string, string>> = {
   issued_at: 'issuedAt',
   due_at: 'dueAt',
   paid_at: 'paidAt',
+  // Hermes Agent Root — sql/07_hermes_agent_root.sql (D4 forward-only).
+  hermes_code: 'hermesCode',
+  current_task: 'currentTask',
+  load_pct: 'loadPct',
+  tokens_today: 'tokensToday',
+  tasks_today: 'tasksToday',
+  success_pct: 'successPct',
+  default_model: 'defaultModel',
 };
 
 const UI_TO_DB_COLUMN_MAP: Readonly<Record<string, string>> = Object.fromEntries(
