@@ -37,7 +37,6 @@ import {
 import { agentsRepo } from '@/data/agents.repo';
 import type { Agent } from '@/lib/types';
 import { AGENT_STATUS_LABEL, AGENT_ROLE_LABEL } from '@/lib/statusLabels';
-import { BackButton } from '@/components/BackButton';
 import { EmptyState } from '@/components/EmptyState';
 import { safeArray, safeNum } from '@/lib/safe';
 
@@ -323,7 +322,6 @@ export const AgentRootView = (): React.ReactElement => {
   if (cards.length === 0) {
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
-        <BackButton />
         <EmptyState
           title="No agents yet"
           description="Add the first AI agent to seed your Mission Control fleet."
@@ -334,8 +332,6 @@ export const AgentRootView = (): React.ReactElement => {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
-      <BackButton />
-
       {/* Hero */}
       <section
         className="relative rounded-3xl bg-ink text-cream px-7 md:px-9 py-7 md:py-8 overflow-hidden"

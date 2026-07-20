@@ -122,6 +122,26 @@ export interface HerAgentMeta {
 /** Intersection of the canonical agent shape and its optional Hermes telemetry. */
 export type AgentWithHermes = Agent & Partial<HerAgentMeta>;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hermes Mission Board (Kanban) — sql/08_hermes_missions.sql
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MissionStatus = 'todo' | 'doing' | 'done';
+export type MissionPriority = 'P1' | 'P2' | 'P3';
+
+export interface Mission {
+  id: string;
+  orgId?: string;
+  agentId: string | null;
+  title: string;
+  priority: MissionPriority;
+  status: MissionStatus;
+  position: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Invoice {
   id: string;
   orgId?: string;

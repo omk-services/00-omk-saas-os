@@ -42,6 +42,15 @@ const FilialesMatrixView = lazy(() => import('@/components/views/FilialesMatrixV
 // Hermes Agent Root — Mission Control hero page (route /agent-root).
 // D4 append-only: served alongside /agents and /people-agents for the swarm lane.
 const AgentRootView = lazy(() => import('@/components/views/AgentRootView').then(m => ({ default: m.AgentRootView })));
+// Mission Control — shell + nested sub-pages (Overview / Agents / Tasks / Office / Content / Schedule / Chat / Docs).
+const MissionControlShell = lazy(() => import('@/components/views/mission-control/MissionControlShell').then(m => ({ default: m.MissionControlShell })));
+const MissionAgentsView = lazy(() => import('@/components/views/mission-control/MissionAgentsView').then(m => ({ default: m.MissionAgentsView })));
+const MissionTasksView = lazy(() => import('@/components/views/mission-control/MissionTasksView').then(m => ({ default: m.MissionTasksView })));
+const MissionOfficeView = lazy(() => import('@/components/views/mission-control/MissionOfficeView').then(m => ({ default: m.MissionOfficeView })));
+const MissionContentView = lazy(() => import('@/components/views/mission-control/MissionContentView').then(m => ({ default: m.MissionContentView })));
+const MissionScheduleView = lazy(() => import('@/components/views/mission-control/MissionScheduleView').then(m => ({ default: m.MissionScheduleView })));
+const MissionChatView = lazy(() => import('@/components/views/mission-control/MissionChatView').then(m => ({ default: m.MissionChatView })));
+const MissionDocsView = lazy(() => import('@/components/views/mission-control/MissionDocsView').then(m => ({ default: m.MissionDocsView })));
 
 const RouteFallback = (): React.ReactElement => (
   <div className="min-h-[40vh] flex items-center justify-center text-slate-400">
@@ -100,6 +109,18 @@ export default function App() {
 
             {/* Hermes Agent Root — Mission Control landing page (D4 append-only alongside legacy /agents). */}
             <Route path="agent-root" element={<Suspense fallback={<RouteFallback />}><AgentRootView /></Suspense>} />
+
+            {/* Mission Control nested shell — 7 sub-pages under /agent-root/* */}
+            <Route path="agent-root" element={<Suspense fallback={<RouteFallback />}><MissionControlShell /></Suspense>}>
+              <Route index element={<Suspense fallback={<RouteFallback />}><AgentRootView /></Suspense>} />
+              <Route path="agents" element={<Suspense fallback={<RouteFallback />}><MissionAgentsView /></Suspense>} />
+              <Route path="tasks" element={<Suspense fallback={<RouteFallback />}><MissionTasksView /></Suspense>} />
+              <Route path="office" element={<Suspense fallback={<RouteFallback />}><MissionOfficeView /></Suspense>} />
+              <Route path="content" element={<Suspense fallback={<RouteFallback />}><MissionContentView /></Suspense>} />
+              <Route path="schedule" element={<Suspense fallback={<RouteFallback />}><MissionScheduleView /></Suspense>} />
+              <Route path="chat" element={<Suspense fallback={<RouteFallback />}><MissionChatView /></Suspense>} />
+              <Route path="docs" element={<Suspense fallback={<RouteFallback />}><MissionDocsView /></Suspense>} />
+            </Route>
 
             {/* 404 catch-all (D6 #73) — unknown routes inside the shell. */}
             <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundView /></Suspense>} />
