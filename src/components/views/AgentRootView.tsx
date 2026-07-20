@@ -39,6 +39,7 @@ import type { Agent } from '@/lib/types';
 import { AGENT_STATUS_LABEL, AGENT_ROLE_LABEL } from '@/lib/statusLabels';
 import { EmptyState } from '@/components/EmptyState';
 import { safeArray, safeNum } from '@/lib/safe';
+import { SwarmRadar } from './mission-control/SwarmRadar';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local view-model — adapt Agent rows to Hermes card shape.
@@ -332,38 +333,57 @@ export const AgentRootView = (): React.ReactElement => {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
-      {/* Hero */}
+      {/* Hero — radar-centric thesis (Phase 4 design polish).
+          Per anthropics/frontend-design: hero is a thesis, not big-number+gradient.
+          Per pbakaus/impeccable: motion is purposeful, one orchestrated moment. */}
       <section
-        className="relative rounded-3xl bg-ink text-cream px-7 md:px-9 py-7 md:py-8 overflow-hidden"
+        className="relative rounded-[32px] bg-ink text-cream px-7 md:px-9 py-7 md:py-8 overflow-hidden"
         aria-label="Mission Control hero"
       >
+        {/* Single restrained atmospheric veil — not a constellation of orbs. */}
         <div
-          className="absolute -top-24 -right-24 size-[380px] rounded-full bg-ember/40 blur-3xl animate-float-orb"
+          className="absolute inset-0 opacity-[0.05] dotgrid pointer-events-none"
           aria-hidden
         />
-        <div className="absolute inset-0 opacity-30 dotgrid pointer-events-none" aria-hidden />
-        <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+        {/* Hairline tape border at the top — control-panel feel. */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[color:var(--color-signal)] to-transparent opacity-40" aria-hidden />
+
+        <div className="relative grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
           <div>
-            <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] uppercase text-cream/60">
-              <Hexagon className="size-3 text-ember" /> Fleet · Mission Control
+            <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] uppercase text-cream/55">
+              <Hexagon className="size-3 text-[color:var(--color-signal)]" /> Hermes · Fleet Radar
             </div>
-            <h1 className="font-display text-[44px] md:text-[60px] leading-[0.95] tracking-tight mt-3">
-              {cards.length} {cards.length === 1 ? 'agent' : 'agents'}.<br />
-              <span className="italic text-ember">one console.</span>
+            <h1 className="font-display text-[48px] md:text-[72px] leading-[0.92] tracking-[-0.02em] mt-3">
+              <span className="italic text-[color:var(--color-signal)]">Sweep</span> the fleet.<br />
+              Route every model.<br />
+              <span className="text-cream/60">Ship the work.</span>
             </h1>
-            <p className="font-sans text-[13px] text-cream/65 mt-3 max-w-lg">
-              Inspect every specialist, route them to the right model, and watch the heartbeat
-              of the entire fleet in one place. Live data from <code className="font-mono text-cream">omk_saas.agents</code>.
+            <p className="font-sans text-[13px] text-cream/65 mt-4 max-w-md leading-relaxed">
+              One rotating dish observes every specialist in real time. Blip state tells the
+              truth; no chart required. Live telemetry from{' '}
+              <code className="font-mono text-cream">omk_saas.agents</code>.
             </p>
+            <div className="flex flex-wrap items-center gap-2 mt-5">
+              <HeroChip icon={Activity} value={String(stats.totalTasksToday)} label="tasks logged" />
+              <HeroChip
+                icon={Sparkles}
+                value={stats.avgSuccess === 0 ? '—' : `${stats.avgSuccess.toFixed(1)}`}
+                label="avg success %"
+              />
+              <HeroChip icon={GitBranch} value={`${stats.routedToFastPct}%`} label="routed to fast" />
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <HeroChip icon={Activity} value={String(stats.totalTasksToday)} label="tasks logged" />
-            <HeroChip
-              icon={Sparkles}
-              value={stats.avgSuccess === 0 ? '—' : `${stats.avgSuccess.toFixed(1)}`}
-              label="avg success %"
-            />
-            <HeroChip icon={GitBranch} value={`${stats.routedToFastPct}%`} label="routed to fast" accent="ember" />
+
+          {/* Signature element — Swarm Radar. */}
+          <div className="relative shrink-0 mx-auto md:mx-0">
+            <div className="size-[280px] md:size-[340px]">
+              <SwarmRadar agents={cards} />
+            </div>
+            <div className="absolute -bottom-2 inset-x-0 flex items-center justify-center gap-3 font-mono text-[9px] uppercase tracking-[0.2em] text-cream/55">
+              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[color:var(--color-signal)]" /> Live</span>
+              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[color:var(--color-alarm)]" /> Thinking</span>
+              <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-cream/30" /> Idle</span>
+            </div>
           </div>
         </div>
       </section>
@@ -383,7 +403,7 @@ export const AgentRootView = (): React.ReactElement => {
         <article className="rounded-3xl bg-her-surface border border-her-border p-5">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-her-muted">— ACTIVE MISSIONS</span>
-            <span className="size-2 rounded-full bg-ember animate-breathe" />
+            <span className="size-2 rounded-full bg-[color:var(--color-signal)] motion-safe:animate-[var(--animate-swarm-blip-halo)] motion-reduce:animate-none" />
           </div>
           <div className="font-display tabular-nums mt-2 text-ink" style={{ fontSize: 'clamp(36px, 4vw, 56px)' }}>
             {stats.activeCount}
@@ -491,7 +511,7 @@ export const AgentRootView = (): React.ReactElement => {
           </p>
         </article>
         <article className="col-span-12 lg:col-span-5 rounded-3xl bg-ink text-cream p-6 relative overflow-hidden">
-          <div className="absolute -right-16 -top-16 size-[260px] rounded-full bg-ember/30 blur-3xl animate-float-orb" aria-hidden />
+          <div className="absolute -right-16 -top-16 size-[200px] rounded-full bg-ember/15 blur-2xl" aria-hidden />
           <div className="absolute inset-0 opacity-[0.06] dotgrid text-cream pointer-events-none" aria-hidden />
           <div className="relative">
             <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-cream/60">— BUILD</span>

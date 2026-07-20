@@ -153,7 +153,7 @@ export const MissionAgentsView = (): React.ReactElement => {
   return (
     <div className="space-y-5">
       <section className="relative rounded-3xl bg-ink text-cream px-7 md:px-9 py-7 md:py-8 overflow-hidden">
-        <div className="absolute -top-24 -right-24 size-[380px] rounded-full bg-ember/40 blur-3xl animate-float-orb" aria-hidden />
+        <div className="absolute -top-24 -right-24 size-[260px] rounded-full bg-ember/20 blur-2xl" aria-hidden />
         <div className="absolute inset-0 opacity-30 dotgrid pointer-events-none" aria-hidden />
         <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-5">
           <div>

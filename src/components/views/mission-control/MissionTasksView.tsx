@@ -274,7 +274,7 @@ export const MissionTasksView = (): React.ReactElement => {
   return (
     <div className="space-y-5">
       <section className="relative overflow-hidden rounded-[28px] bg-ink text-cream p-6 md:p-8">
-        <div className="pointer-events-none absolute -top-24 -left-16 size-72 rounded-full bg-ember/30 blur-3xl animate-float-orb" aria-hidden />
+        <div className="pointer-events-none absolute -top-24 -left-16 size-56 rounded-full bg-ember/20 blur-2xl" aria-hidden />
         <div className="pointer-events-none absolute inset-0 dotgrid text-cream/10" aria-hidden />
         <div className="relative flex flex-col lg:flex-row lg:items-end gap-6 justify-between">
           <div className="max-w-3xl">
