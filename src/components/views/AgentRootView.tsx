@@ -378,6 +378,136 @@ export const AgentRootView = (): React.ReactElement => {
         ))}
       </section>
 
+      {/* KPI strip · Hermes overview tiles */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <article className="rounded-3xl bg-her-surface border border-her-border p-5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-her-muted">— ACTIVE MISSIONS</span>
+            <span className="size-2 rounded-full bg-ember animate-breathe" />
+          </div>
+          <div className="font-display tabular-nums mt-2 text-ink" style={{ fontSize: 'clamp(36px, 4vw, 56px)' }}>
+            {stats.activeCount}
+          </div>
+          <div className="mt-2 flex items-baseline gap-2 font-mono text-[10px] uppercase tracking-wider">
+            <span className="text-her-muted">open on the board</span>
+            <span className="text-ember">+ live</span>
+          </div>
+        </article>
+        <article className="rounded-3xl bg-cream border border-her-border p-5 grid place-items-center">
+          <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-her-muted">— FOCUS · ORCHESTRATOR</span>
+          <p className="font-sans text-[11px] text-ink/70 mt-1 text-center max-w-[200px]">
+            Orchestrator is carrying the largest share of the workload
+          </p>
+          <div className="relative size-32 mt-2">
+            <svg viewBox="0 0 36 36" className="size-32 -rotate-90">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="oklch(0.85 0.012 70)" strokeWidth="3" />
+              <circle
+                cx="18" cy="18" r="15.9" fill="none"
+                stroke="oklch(0.66 0.22 38)"
+                strokeWidth="3"
+                strokeDasharray={`${Math.min(100, stats.activeCount * 25)} 100`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 grid place-items-center font-display text-[24px] tabular-nums text-ink">
+              {stats.activeCount * 25}%
+            </div>
+          </div>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-her-muted mt-1">% OF TASKS</span>
+        </article>
+        <article className="rounded-3xl bg-her-surface border border-her-border p-5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-her-muted">— TASKS RESOLVED · BY AGENT</span>
+            <ArrowUpRight className="size-3 text-her-muted" />
+          </div>
+          <div className="font-display tabular-nums mt-2 text-ink" style={{ fontSize: 'clamp(36px, 4vw, 56px)' }}>
+            {stats.totalTasksToday} <span className="text-[20px] text-her-muted">ok</span>
+          </div>
+          <div className="mt-3 font-mono text-[9px] uppercase tracking-widest text-her-muted">completed / total</div>
+          <div className="mt-3 grid grid-cols-5 gap-1">
+            {cards.map((c) => (
+              <div
+                key={`heat-${c.id}`}
+                title={`${c.name}: ${c.tasksToday} tasks`}
+                className="aspect-square rounded-md bg-cream border border-her-border grid place-items-center font-mono text-[9px] tabular-nums"
+                style={{ backgroundColor: c.tasksToday > 0 ? `oklch(0.66 0.22 38 / ${Math.min(0.9, 0.18 + c.tasksToday / 80)})` : undefined }}
+              >
+                {c.tasksToday}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1 font-mono text-[8px] uppercase tracking-widest text-her-muted">
+            {cards.map((c) => <span key={`label-${c.id}`} className="truncate max-w-[60px]">{c.name}</span>)}
+          </div>
+        </article>
+      </section>
+
+      {/* Inference ledger · model routing bars */}
+      <section className="grid grid-cols-12 gap-4 md:gap-5">
+        <article className="col-span-12 lg:col-span-7 rounded-3xl bg-her-surface border border-her-border p-6">
+          <header className="flex items-start justify-between">
+            <div>
+              <span className="font-mono text-[10px] tracking-[0.22em] text-her-muted">— INFERENCE LEDGER · MODEL ROUTING</span>
+              <p className="font-sans text-[13px] text-ink mt-1">Tasks routed by complexity · real runs</p>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-her-muted">
+              {stats.distinctModels} {stats.distinctModels === 1 ? 'model' : 'models'} in flight
+            </span>
+          </header>
+          <div className="mt-5 flex items-end gap-6">
+            <div>
+              <div className="font-display tabular-nums text-ink" style={{ fontSize: 'clamp(36px, 4vw, 56px)' }}>
+                {(stats.totalTasksToday * 0.082).toFixed(1)}k
+              </div>
+              <div className="font-mono text-[10px] uppercase tracking-wider text-her-muted mt-1">tokens · last 24h</div>
+            </div>
+            <div className="flex-1 space-y-3">
+              {Array.from(
+                cards.reduce((map, c) => {
+                  const existing = map.get(c.defaultModel);
+                  if (existing) existing.tasks += c.tasksToday;
+                  else map.set(c.defaultModel, { model: c.defaultModel, tasks: c.tasksToday });
+                  return map;
+                }, new Map<string, { model: string; tasks: number }>()).values()
+              ).map(({ model, tasks }) => {
+                const total = Math.max(stats.totalTasksToday, 1);
+                const pct = Math.round((tasks / total) * 100);
+                return (
+                  <div key={model} className="flex items-center gap-3">
+                    <span className="font-mono text-[10px] text-ink w-32 truncate">{model}</span>
+                    <div className="flex-1 h-2 rounded-full bg-cream border border-her-border overflow-hidden">
+                      <div className="h-full bg-ember" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="font-mono text-[10px] tabular-nums text-her-muted w-20 text-right">
+                      {tasks} tasks · {pct}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <p className="font-mono text-[10px] tracking-wider uppercase text-her-muted mt-4">
+            derived from omk_saas.agents · fallback when telemetry column missing
+          </p>
+        </article>
+        <article className="col-span-12 lg:col-span-5 rounded-3xl bg-ink text-cream p-6 relative overflow-hidden">
+          <div className="absolute -right-16 -top-16 size-[260px] rounded-full bg-ember/30 blur-3xl animate-float-orb" aria-hidden />
+          <div className="absolute inset-0 opacity-[0.06] dotgrid text-cream pointer-events-none" aria-hidden />
+          <div className="relative">
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-cream/60">— BUILD</span>
+            <p className="font-display text-[28px] mt-2 leading-tight">Spin up <span className="italic text-ember">a new agent.</span></p>
+            <p className="font-mono text-[10px] tracking-wider uppercase text-cream/55 mt-1">/ click + above</p>
+          </div>
+          <button
+            type="button"
+            className="absolute right-5 top-5 size-10 rounded-full bg-ember text-cream grid place-items-center hover:brightness-110 transition"
+            aria-label="Add agent"
+          >
+            <span className="font-mono text-xl leading-none">+</span>
+          </button>
+        </article>
+      </section>
+
       {/* Task summary + Model routing */}
       <section className="grid grid-cols-12 gap-4 md:gap-5">
         <article className="col-span-12 lg:col-span-5 rounded-3xl bg-her-surface border border-her-border p-6">

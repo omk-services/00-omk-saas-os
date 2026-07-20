@@ -17,6 +17,12 @@ const formatDate = (iso: string): string => {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
+const isPlaceholderUrl = (url: string | null): boolean => {
+  if (!url) return true;
+  const u = url.toLowerCase();
+  return u.includes('example.com') || u.includes('/seed/') || u.endsWith('.placeholder');
+};
+
 export const MissionContentView = (): React.ReactElement => {
   const [documents, setDocuments] = useState<Document[] | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -129,23 +135,32 @@ export const MissionContentView = (): React.ReactElement => {
         <EmptyState title="No match" description={`No documents match "${search}".`} />
       ) : (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((d) => (
-            <article key={d.id} className="rounded-3xl bg-cream border border-her-border p-5 hover:shadow-soft transition-shadow">
-              <header className="flex items-start gap-3">
-                <FileText className="size-5 text-ember mt-0.5 shrink-0" strokeWidth={1.5} />
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-[18px] leading-tight text-ink truncate">{d.title}</h3>
-                  <p className="font-mono text-[10px] text-her-muted uppercase tracking-wider mt-1">
-                    {d.mimeType || 'untitled'} · {formatDate(d.createdAt)}
-                  </p>
-                </div>
-              </header>
-              <footer className="mt-4 pt-3 border-t border-her-border flex items-center justify-between font-mono text-[10px] text-her-muted">
-                <span className="truncate">{d.uploadedBy ? `by ${d.uploadedBy.slice(0, 8)}…` : 'unattributed'}</span>
-                <a href={d.fileUrl} target="_blank" rel="noreferrer" className="text-ember hover:underline">Open →</a>
-              </footer>
-            </article>
-          ))}
+          {filtered.map((d) => {
+            const placeholder = isPlaceholderUrl(d.fileUrl);
+            return (
+              <article key={d.id} className="rounded-3xl bg-cream border border-her-border p-5 hover:shadow-soft transition-shadow">
+                <header className="flex items-start gap-3">
+                  <FileText className="size-5 text-ember mt-0.5 shrink-0" strokeWidth={1.5} />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-display text-[18px] leading-tight text-ink truncate">{d.title}</h3>
+                    <p className="font-mono text-[10px] text-her-muted uppercase tracking-wider mt-1">
+                      {d.mimeType || 'untitled'} · {formatDate(d.createdAt)}
+                    </p>
+                  </div>
+                </header>
+                <footer className="mt-4 pt-3 border-t border-her-border flex items-center justify-between font-mono text-[10px] text-her-muted">
+                  <span className="truncate">{d.uploadedBy ? `by ${d.uploadedBy.slice(0, 8)}…` : 'unattributed'}</span>
+                  {placeholder ? (
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full" title="Seed placeholder — no real file attached yet">
+                      Seed placeholder
+                    </span>
+                  ) : (
+                    <a href={d.fileUrl ?? '#'} target="_blank" rel="noreferrer" className="text-ember hover:underline">Open →</a>
+                  )}
+                </footer>
+              </article>
+            );
+          })}
         </section>
       )}
     </div>

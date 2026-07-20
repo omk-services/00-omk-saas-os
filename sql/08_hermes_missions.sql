@@ -45,46 +45,33 @@ COMMENT ON COLUMN omk_saas.missions.notes           IS 'Free-text notes / brief 
 -- RLS follows the same pattern as other tenant tables. Org_id is injected
 -- server-side by the JWT custom_access_token_hook (ADR-OMK-001).
 ALTER TABLE omk_saas.missions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE omk_saas.missions FORCE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS saas_missions_select ON omk_saas.missions;
-DROP POLICY IF EXISTS saas_missions_insert ON omk_saas.missions;
-DROP POLICY IF EXISTS saas_missions_update ON omk_saas.missions;
-DROP POLICY IF EXISTS saas_missions_delete ON omk_saas.missions;
+DROP POLICY IF EXISTS tenant_isolation_select  ON omk_saas.missions;
+DROP POLICY IF EXISTS tenant_isolation_insert  ON omk_saas.missions;
+DROP POLICY IF EXISTS tenant_isolation_update  ON omk_saas.missions;
+DROP POLICY IF EXISTS tenant_isolation_delete  ON omk_saas.missions;
+DROP POLICY IF EXISTS service_role_all         ON omk_saas.missions;
 
-CREATE POLICY saas_missions_select ON omk_saas.missions
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM omk_saas.memberships m
-      WHERE m.user_id = auth.uid()
-        AND (m.org_id_ref = org_id OR m.org_id = org_id)
-    )
-  );
+CREATE POLICY tenant_isolation_select ON omk_saas.missions
+  FOR SELECT TO authenticated
+  USING (org_id = (SELECT public.current_org_id()));
 
-CREATE POLICY saas_missions_insert ON omk_saas.missions
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM omk_saas.memberships m
-      WHERE m.user_id = auth.uid()
-        AND (m.org_id_ref = org_id OR m.org_id = org_id)
-    )
-  );
+CREATE POLICY tenant_isolation_insert ON omk_saas.missions
+  FOR INSERT TO authenticated
+  WITH CHECK (org_id = (SELECT public.current_org_id()));
 
-CREATE POLICY saas_missions_update ON omk_saas.missions
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM omk_saas.memberships m
-      WHERE m.user_id = auth.uid()
-        AND (m.org_id_ref = org_id OR m.org_id = org_id)
-    )
-  );
+CREATE POLICY tenant_isolation_update ON omk_saas.missions
+  FOR UPDATE TO authenticated
+  USING (org_id = (SELECT public.current_org_id()))
+  WITH CHECK (org_id = (SELECT public.current_org_id()));
 
-CREATE POLICY saas_missions_delete ON omk_saas.missions
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM omk_saas.memberships m
-      WHERE m.user_id = auth.uid()
-        AND (m.org_id_ref = org_id OR m.org_id = org_id)
-    )
-  );
+CREATE POLICY tenant_isolation_delete ON omk_saas.missions
+  FOR DELETE TO authenticated
+  USING (org_id = (SELECT public.current_org_id()));
+
+CREATE POLICY service_role_all ON omk_saas.missions
+  FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
 
 COMMIT;
