@@ -9,8 +9,48 @@
   --color-her-border: oklch(0.85 0.012 70);
   --color-her-muted: oklch(0.45 0.018 60);
 
+  /* Hermes Mission Control — Phase 4 design polish. Impeccable-aligned:
+     - No bounce/elastic easing anywhere.
+     - Single signature motion: linear radar sweep.
+     - UI feedback uses ease-out-expo (firm landing) or ease-in-out-quart
+       (slow ease). See pbakaus/impeccable motion principles. */
+  --color-signal: oklch(0.78 0.18 142);          /* control-tower green */
+  --color-signal-dim: oklch(0.55 0.12 142);     /* off-state green */
+  --color-alarm: oklch(0.72 0.20 50);           /* signal amber */
+  --color-tape: oklch(0.85 0.012 75);           /* warm tape line */
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-radar: linear;
+
   --font-display: "Instrument Serif", "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Single signature animation: linear radar sweep. Replaces every bounce /
+     ping / breathe / float-orb scattered across the views (Impeccable). */
+  --animate-swarm-radar-sweep: swarm-radar-sweep 6s linear infinite;
+  --animate-swarm-blip-in: swarm-blip-in 480ms var(--ease-out-expo) both;
+  --animate-swarm-blip-halo: swarm-blip-halo 2.4s var(--ease-in-out-quart) infinite;
+}
+
+@keyframes swarm-radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes swarm-blip-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes swarm-blip-halo {
+  0%   { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 :root {
