@@ -16,6 +16,7 @@ import {
   PanelLeftClose,
   Shield,
   LogOut,
+  Radar,
 } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +49,7 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     links: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/people-agents', label: 'People / Agents', icon: UserCog },
+      { to: '/agent-root', label: 'Agent Root', icon: Radar },
       { to: '/operations-knowledge', label: 'Operations / Knowledge', icon: BookOpen },
       { to: '/it-software-kernel', label: 'IT Software Kernel', icon: Server }
     ]

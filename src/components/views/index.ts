@@ -13,3 +13,4 @@ export * from './GrowthView';
 export * from './SalesView';
 export * from './MarketplaceView';
 export * from './ItDataView';
+export * from './AgentRootView';
